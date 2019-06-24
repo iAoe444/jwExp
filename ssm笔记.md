@@ -2,7 +2,7 @@
 
 > 书写于2019/06/18 15:13
 
-## 搭建开发环境
+## 1 搭建开发环境
 
 > 这里使用`maven`+`eclipse`+`tomcat`+`jdk1.8`进行搭建
 >
@@ -128,7 +128,7 @@
      </web-app>
      ```
 
-## 开始学习前
+## 2 开始学习前
 
 ### 项目目录结构
 
@@ -416,7 +416,7 @@ jdbc.password=123456
 		<!-- 注入sqlSessionFactory -->
 		<property name="sqlSessionFactoryBeanName" value="sqlSessionFactory" />
 		<!-- 给出需要扫描Dao接口包 -->
-		<property name="basePackage" value="com.iaoe.jwExpdao" />
+		<property name="basePackage" value="com.iaoe.jwExp.dao" />
 	</bean>
 </beans>
 ```
@@ -518,7 +518,252 @@ jdbc.password=123456
 
 ```
 
+## 3 验证之前的配置是否成功
 
+### 验证DAO
+
+> 这里的话是通过单元测试的方法来测试是否连接成功，小步骤如下
+>
+> 1. 新建dao层的接口
+> 2. 在mapper里面建立与数据库的连接
+> 3. 新建test进程
+
+1. 新建`AreaDao`接口，在`com.iaoe.jwExp.dao`包下，写入查询接口`queryArea()`方法
+
+   ```java
+   package com.iaoe.jwExp.dao;
+   
+   import java.util.List;
+   import com.iaoe.jwExp.entity.Area;
+   
+   public interface AreaDao {
+   	/**
+   	 * 列出区域列表
+   	 * @return areaList
+   	 */
+   	List<Area> queryArea();
+   }
+   ```
+
+2. 在src/main/resources/mapper里面添加我们与数据库之间的映射`AreaDao.xml`
+
+   ```xml
+   <?xml version="1.0" encoding="UTF-8"?>
+   <!--这里用于做规范-->
+   <!DOCTYPE mapper
+       PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+       "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+   
+   <!--1.命名空间namespace代表Dao层所在的位置-->
+   <!--2.id为查询的方法名，resultType说明返回的是Area类-->
+   <!--3.中间的是查询语句-->
+   <mapper namespace="com.iaoe.jwExp.dao.AreaDao">
+   	<select id="qureyArea" resultType="com.iaoe.jwExp.entity.Area">
+   		SELECT
+   		area_id,area_name,priority,create_time,last_edit_time
+   		FROM tb_area
+   		ORDER BY priority DESC
+   	</select>
+   </mapper>
+   ```
+
+3. 在`src/test/java`里面新建包`com.iaoe.jwExp`，并新建`BaseTest.java`程序
+
+   ```java
+   package com.iaoe.jwExp;
+   
+   import org.junit.runner.RunWith;
+   import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+   import org.springframework.test.context.ContextConfiguration;
+   
+   /**
+    * 配置spring和junit整合，junit启动时加载springIOC容器
+    * @author iAoe
+    *
+    */
+   //使用哪个junit
+   @RunWith(SpringJUnit4ClassRunner.class)
+   //告诉junit spring配置文件
+   @ContextConfiguration({ "classpath:spring/spring-dao.xml" })
+   public class BaseTest {
+   	
+   }
+   ```
+
+4. 在`src/test/java`里面新建包`com.iaoe.jwExp.iaoe`，并新建`AreaDaoTest.java`程序
+
+   ```java
+   package com.iaoe.jwExp.dao;
+   
+   import java.util.List;
+   import static org.junit.Assert.assertEquals;
+   import org.springframework.beans.factory.annotation.Autowired;
+   import org.junit.Test;
+   import com.iaoe.jwExp.BaseTest;
+   import com.iaoe.jwExp.entity.Area;
+   
+   public class AreaDaoTest extends BaseTest{
+   	@Autowired
+   	private AreaDao areaDao;
+   	
+   	@Test
+   	public void testQueryArea() {
+   		List<Area> areaList = areaDao.queryArea();
+   		assertEquals(2,areaList.size());	//断言，先在数据库建两条数据
+   	}
+   }
+   ```
+
+5. 验证成功画面
+
+   ![](https://ws1.sinaimg.cn/large/006bBmqIgy1g4cbij3gt3j312l0pxdhh.jpg)
+
+### 验证service
+
+> 验证service的方法和验证dao层的方式类似
+>
+> 1. 创建service里的接口类
+>
+> 2. 实现service的接口类
+> 3. 设置单元测试类
+
+1. 在`com.iaoe.jwExp.service`创建`AreaService`接口类
+
+   ```java
+   package com.iaoe.jwExp.service;
+   
+   import java.util.List;
+   
+   import com.iaoe.jwExp.entity.Area;
+   
+   public interface AreaService {
+   	List<Area> getAreaList();
+   }
+   ```
+
+2. 在`com.iaoe.jwExp.service.impl`创建`AreaServiceImpl`实现类
+
+   ```java
+   package com.iaoe.jwExp.service.impl;
+   
+   import java.util.List;
+   
+   import org.springframework.beans.factory.annotation.Autowired;
+   import org.springframework.stereotype.Service;
+   
+   import com.iaoe.jwExp.dao.AreaDao;
+   import com.iaoe.jwExp.entity.Area;
+   import com.iaoe.jwExp.service.AreaService;
+   
+   @Service
+   public class AreaServiceImpl implements AreaService{
+   	@Autowired
+   	private AreaDao areaDao;
+   	@Override
+   	public List<Area> getAreaList() {
+   		return areaDao.queryArea();
+   	}
+   	
+   }
+   ```
+
+3. 修改`src/test/java`里的`com.iaoe.jwExp`的`BaseTest`类，将service.xml导入
+
+   ```java
+   package com.iaoe.jwExp;
+   
+   import org.junit.runner.RunWith;
+   import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+   import org.springframework.test.context.ContextConfiguration;
+   
+   /**
+    * 配置spring和junit整合，junit启动时加载springIOC容器
+    * @author iAoe
+    *
+    */
+   @RunWith(SpringJUnit4ClassRunner.class)
+   //告诉junit spring配置文件
+   @ContextConfiguration({ "classpath:spring/spring-dao.xml","classpath:spring/spring-service.xml" })	//这里加入了srvice.xml
+   public class BaseTest {
+   	
+   }
+   ```
+
+4. 在`src/test/java`里的`com.iaoe.jwExp.service`里创建`AreaServiceTest`类
+
+   ```java
+   package com.iaoe.jwExp.service;
+   
+   import static org.junit.Assert.assertEquals;
+   
+   import java.util.List;
+   
+   import org.junit.Test;
+   import org.springframework.beans.factory.annotation.Autowired;
+   
+   import com.iaoe.jwExp.BaseTest;
+   import com.iaoe.jwExp.entity.Area;
+   
+   public class AreaServiceTest extends BaseTest{
+   	@Autowired
+   	private AreaService areaService;
+   	@Test
+   	public void testAreaList() {
+   		List<Area> areaList = areaService.getAreaList();
+   		assertEquals("西方",areaList.get(0).getAreaName());//用于测试第一个数据库的结果是不是西方
+   	}
+   }
+   ```
+
+### 验证WEB
+
+1. 在`src/main/java`里 `com.iaoe.jwExp.web.superadmin`里新建`AreaController`
+
+   ```java
+   package com.iaoe.jwExp.web.superadmin;
+   
+   import java.util.ArrayList;
+   import java.util.HashMap;
+   import java.util.List;
+   import java.util.Map;
+   
+   import org.springframework.beans.factory.annotation.Autowired;
+   import org.springframework.stereotype.Controller;
+   import org.springframework.web.bind.annotation.RequestMapping;
+   import org.springframework.web.bind.annotation.RequestMethod;
+   import org.springframework.web.bind.annotation.ResponseBody;
+   
+   import com.iaoe.jwExp.entity.Area;
+   import com.iaoe.jwExp.service.AreaService;
+   
+   @Controller
+   @RequestMapping("/superadmin")
+   public class AreaController {
+   	@Autowired
+   	private AreaService areaService;
+   	// 使用get方法
+   	@RequestMapping(value = "/listarea", method = RequestMethod.GET)
+   	// 直接将对象转为json对象
+   	@ResponseBody
+   	private Map<String, Object> listArea() {
+   		Map<String, Object> modelMap = new HashMap<String, Object>();
+   		List<Area> list = new ArrayList<Area>();
+   		try {
+   			list = areaService.getAreaList();
+   			modelMap.put("rows", list);
+   			modelMap.put("total", list.size());
+   		} catch (Exception e) {
+   			e.printStackTrace();
+   			modelMap.put("success", false);
+   			// 返回错误信息
+   			modelMap.put("errMsg", e.toString());
+   		}
+   		return modelMap;
+   	}
+   }
+   ```
+
+   
 
 ## web.xml
 
