@@ -763,7 +763,208 @@ jdbc.password=123456
    }
    ```
 
-   
+##  4 logback
+
+> logback主件的作用主要作用两个，一个是错误追踪，一个是显示程序状态
+
+### logback介绍
+
+**logback的主要模块**
+
+1. logback-access
+
+   > 第三方软件可以通过这个模块来获取logback日志
+
+2. logback-classic
+
+   > 可以方便切换其他日志系统
+
+3. logback-core
+
+   > 为前面两个提供基础支持
+
+**logback主要标签**
+
+1. logger
+
+   > 存放日志对象，可以定义日志类型和级别
+
+2. appender
+
+   > 指定日志输出的目的地/媒介，如控制台，文件
+
+3. layout
+
+   > 格式化日志信息
+
+### logback配置
+
+在`src/main/resources`里面建立一个`logback.xml`
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- scan配置文件发生改变，会自动修改 scanPeriod用于设置扫描配置的时间，这样改了配置信息就会自动生效，不用重启服务器 debug用于查看logback本身的运行状态 -->
+<configuration scan="true" scanPeriod="60 seconds"
+	debug="false">
+	<!-- 定制参数变量 -->
+	<!-- TRACE<DEBUG<INFO<WARN<ERROR -->
+	<!-- 设置logger.trace("msg"),还可以设置logger.debug... -->
+	<!-- 这里代表debug与后面的信息都能得到， -->
+	<property name="log.level" value="debug" />
+	<property name="log.maxHistory" value="30" />
+	<property name="log.filePath"
+		value="${catalina.base}/logs/webapps" />
+	<!-- 输出时间-线程-哪个级别的日志-哪个package和类的-信息-换行 -->
+	<property name="log.pattern"
+		value="%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} -
+				%msg%n" />
+	<!-- 在控制台输出信息 -->
+	<appender name="consoleAppender"
+		class="ch.qos.logback.core.ConsoleAppender">
+		<encoder>
+			<pattern>${log.pattern}</pattern>
+		</encoder>
+	</appender>
+	<!-- DEBUG输出的文件路径，按天按月滚动生成 -->
+	<appender name="debugAppender"
+		class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${log.filePath}/debug.log</file>
+		<rollingPolicy
+			class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<!-- 文件名称 -->
+			<fileNamePattern>${log.filePath}/debug/debug.%d{yyyy-MM-dd}.log.gz
+			</fileNamePattern>
+			<!-- 文件最大保存历史数量30天 -->
+			<maxHistory>${log.maxHistory}</maxHistory>
+		</rollingPolicy>
+		<encoder>
+			<pattern>${log.pattern}</pattern>
+		</encoder>
+		<filter class="ch.qos.logback.classic.filter.LevelFilter">
+			<level>DEBUG</level>
+			<onMatch>ACCEPT</onMatch>
+			<onMismatch>DENY</onMismatch>
+		</filter>
+	</appender>
+	<!-- info输出的文件路径，按天按月滚动生成 -->
+	<appender name="infoAppender"
+		class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${log.filePath}/info.log</file>
+		<rollingPolicy
+			class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<!-- 文件名称 -->
+			<fileNamePattern>${log.filePath}/info/info.%d{yyyy-MM-dd}.log.gz
+			</fileNamePattern>
+			<!-- 文件最大保存历史数量30天 -->
+			<maxHistory>${log.maxHistory}</maxHistory>
+		</rollingPolicy>
+		<encoder>
+			<pattern>${log.pattern}</pattern>
+		</encoder>
+		<filter class="ch.qos.logback.classic.filter.LevelFilter">
+			<level>INFO</level>
+			<onMatch>ACCEPT</onMatch>
+			<onMismatch>DENY</onMismatch>
+		</filter>
+	</appender>
+	<!-- error输出的文件路径，按天按月滚动生成 -->
+	<appender name="errorAppender"
+		class="ch.qos.logback.core.rolling.RollingFileAppender">
+		<file>${log.filePath}/error.log</file>
+		<rollingPolicy
+			class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+			<!-- 文件名称 -->
+			<fileNamePattern>${log.filePath}/error/error.%d{yyyy-MM-dd}.log.gz
+			</fileNamePattern>
+			<!-- 文件最大保存历史数量30天 -->
+			<maxHistory>${log.maxHistory}</maxHistory>
+		</rollingPolicy>
+		<encoder>
+			<pattern>${log.pattern}</pattern>
+		</encoder>
+		<filter class="ch.qos.logback.classic.filter.LevelFilter">
+			<level>ERROR</level>
+			<onMatch>ACCEPT</onMatch>
+			<onMismatch>DENY</onMismatch>
+		</filter>
+	</appender>
+	<!-- 监听com.iaoe.jwExp下的日志信息，addititivity为true会继承root的信息 -->
+	<logger name="com.iaoe.jwExp" level="${log.level}"
+		additivity="true">
+		<appender-ref ref="debugAppender" />
+		<appender-ref ref="infoAppender" />
+		<appender-ref ref="errorAppender" />
+	</logger>
+	<root level="info">
+		<appender-ref ref="consoleAppender" />
+	</root>
+</configuration>
+```
+
+### 验证logback
+
+修改我们之前的`AreaController`文件
+
+```java
+package com.iaoe.jwExp.web.superadmin;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.ResponseBody;
+
+import com.iaoe.jwExp.entity.Area;
+import com.iaoe.jwExp.service.AreaService;
+
+@Controller
+@RequestMapping("/superadmin")
+public class AreaController {
+	Logger logger = LoggerFactory.getLogger(AreaController.class);
+	@Autowired
+	private AreaService areaService;
+	// 使用get方法
+	@RequestMapping(value = "/listarea", method = RequestMethod.GET)
+	// 直接将对象转为json对象
+	@ResponseBody
+	private Map<String, Object> listArea() {
+		logger.info("===start===");
+		long startTime = System.currentTimeMillis();
+		Map<String, Object> modelMap = new HashMap<String, Object>();
+		List<Area> list = new ArrayList<Area>();
+		try {
+			list = areaService.getAreaList();
+			modelMap.put("rows", list);
+			modelMap.put("total", list.size());
+		} catch (Exception e) {
+			e.printStackTrace();
+			modelMap.put("success", false);
+			// 返回错误信息
+			modelMap.put("errMsg", e.toString());
+			logger.error("test error!");
+		}
+		long endTime = System.currentTimeMillis();
+		logger.debug("costTime:[{}ms]",endTime-startTime);
+		logger.info("===end===");
+		return modelMap;
+	}
+}
+```
+
+控制台输出的信息如下
+
+![](https://ws1.sinaimg.cn/large/006bBmqIgy1g4d60vbp1gj30ob07zt9d.jpg)
+
+日志文件输出如下
+
+![](https://ws1.sinaimg.cn/large/006bBmqIgy1g4d61rtwkdj30iv04iaa4.jpg)
 
 ## web.xml
 
