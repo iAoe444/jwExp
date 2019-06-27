@@ -17,6 +17,17 @@ import com.iaoe.jwExp.entity.ShopCategory;
 public class ShopDaoTest extends BaseTest{
 	@Autowired
 	private ShopDao shopDao;
+	
+	@Test
+	public void testQueryByShopId(){
+		long shopId = 2;
+		Shop shop = shopDao.queryByShopId(shopId);
+		int areaId = shop.getArea().getAreaId();
+		System.out.println("areaId:"+shop.getArea().getAreaId());
+		System.out.println("areaName:"+shop.getArea().getAreaName());
+		assertEquals(2, areaId);
+	}
+	
 	@Test
 	@Ignore
 	public void testInsertShop(){
@@ -45,6 +56,7 @@ public class ShopDaoTest extends BaseTest{
 	}
 	
 	@Test
+	@Ignore
 	public void testUpdateShop(){
 		Shop shop = new Shop();
 		shop.setShopId(2L);

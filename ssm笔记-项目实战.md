@@ -1152,3 +1152,115 @@ public class ShopCategoryDaoTest extends BaseTest{
        <property name="maxInMemorySize" value="20971520"></property>
    </bean>
    ```
+
+## 2. 店铺信息编辑的实现
+
+> 有了之前的经验，现在大致了解了ssm前后端的开发，接下来功能的实现上应该会比之前的路轻松的多
+
+### （查询、表联接）Dao层实现店铺信息编辑
+
+> 由于之前已经做了更新的操作，现在加上查询的操作，为什么呢？因为我们在编辑的时候，需要获取店铺的信息，再进行相应的修改
+
+1. dao层`shopDao`添加如下接口
+
+   ```java
+   	/**
+   	 * 通过shopId查询店铺
+   	 * @param shopId
+   	 * @return
+   	 */
+   	Shop queryByShopId(long shopId);
+   ```
+
+2. mapper`shopDao.xml`添加查询接口
+
+>  这里需要注意的是，需要进行联接表的操作，因为里面的分类和地域为id，没有名字，这里需要先设置一个符合返回类型，用resutlMap来实现，接着才是对接口的实现
+
+```xml
+   <!-- 查询返回的符合数据类型 -->
+   	<resultMap id="shopMap" type="com.iaoe.jwExp.entity.Shop">
+   		<!-- 主键 -->
+   		<!-- Column为数据库里的属性名 -->
+   		<!-- property为entity里的属性名 -->
+   		<id column="shop_id" property="shopId" />
+   		<result column="shop_name" property="shopName" />
+   		<result column="shop_desc" property="shopDesc" />
+   		<result column="shop_addr" property="shopAddr" />
+   		<result column="phone" property="phone" />
+   		<result column="shop_img" property="shopImg" />
+   		<result column="priority" property="priority" />
+   		<result column="create_time" property="createTime" />
+   		<result column="last_edit_time" property="lastEditTime" />
+   		<result column="enable_status" property="enableStatus" />
+   		<result column="advice" property="advice" />
+   		<!-- 复合类型 -->
+   		<association property="area" column="area_id"
+   			javaType="com.iaoe.jwExp.entity.Area">
+   			<id column="area_id" property="areaId" />
+   			<result column="area_name" property="areaName" />
+   		</association>
+   		<association property="shopCategory"
+   			column="shop_category_id"
+   			javaType="com.iaoe.jwExp.entity.ShopCategory">
+   			<id column="shop_category_id" property="shopCategoryId" />
+   			<result column="shop_category_name"
+   				property="shopCategoryName" />
+   		</association>
+   		<association property="owner" column="user_id"
+   			javaType="com.iaoe.jwExp.entity.PersonInfo">
+   			<id column="user_id" property="userId" />
+   			<result column="name" property="name" />
+   		</association>
+   	</resultMap>
+   	<!-- 查询方法实现 -->
+   	<select id="queryByShopId" resultMap="shopMap"
+   		parameterType="Long">
+   		SELECT
+   		s.shop_id,
+   		s.shop_name,
+   		s.shop_desc,
+   		s.shop_addr,
+   		s.phone,
+   		s.shop_img,
+   		s.priority,
+   		s.create_time,
+   		s.last_edit_time,
+   		s.enable_status,
+   		s.advice,
+   		a.area_id,
+   		a.area_name,
+   		sc.shop_category_id,
+   		sc.shop_category_name
+   		FROM
+   		tb_shop s,
+   		tb_area a,
+   		tb_shop_category sc
+   		WHERE
+   		s.area_id=a.area_id
+   		AND
+   		s.shop_category_id=sc.shop_category_id
+   		AND
+   		s.shop_id=#{shopId}
+   	</select>
+```
+
+3. junit测试`shopDaoTest`
+
+   ```java
+   	@Test
+   	public void testQueryByShopId(){
+   		long shopId = 2;
+   		Shop shop = shopDao.queryByShopId(shopId);
+   		int areaId = shop.getArea().getAreaId();
+   		System.out.println("areaId:"+shop.getArea().getAreaId());
+   		System.out.println("areaName:"+shop.getArea().getAreaName());
+   		assertEquals(2, areaId);
+   	}   
+   ```
+
+![](https://ws1.sinaimg.cn/large/006bBmqIgy1g4fsvup0inj31580q6acq.jpg)
+
+   
+
+   
+
