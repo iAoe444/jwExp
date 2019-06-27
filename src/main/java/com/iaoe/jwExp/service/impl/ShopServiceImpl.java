@@ -1,6 +1,5 @@
 package com.iaoe.jwExp.service.impl;
 
-import java.io.File;
 import java.util.Date;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,7 +24,7 @@ public class ShopServiceImpl implements ShopService{
 	//使用Transactional保证事务的原子性
 	@Override
 	@Transactional
-	public ShopExecution addShop(Shop shop, File shopImg) {
+	public ShopExecution addShop(Shop shop, CommonsMultipartFile shopImg) {
 		//空值判断
 		if(shop==null) {
 			return new ShopExecution(ShopStateEnum.NULL_SHOP_INFO);
@@ -60,7 +59,7 @@ public class ShopServiceImpl implements ShopService{
 		return new ShopExecution(ShopStateEnum.CHECK,shop);
 	}
 	//添加图片
-	private void addShopImg(Shop shop,File shopImg) {
+	private void addShopImg(Shop shop,CommonsMultipartFile shopImg) {
 		//获取shop图片的相对值路径
 		String dest = PathUtil.getShopImagePath(shop.getShopId());
 		String shopImageAddr = ImageUtil.generateThumbnail(shopImg, dest);

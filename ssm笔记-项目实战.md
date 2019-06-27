@@ -340,7 +340,7 @@
 
 ### （思维的转变）service层实现注册店铺功能
 
-> 从dao层到service，dto，enums层  
+> 从dao层到service，dto，enums层  ，**代码部分有误**
 
 ​	这里由于之前学的框架没有中间这个service层，之所以出现这个层，主要也是为了高内聚低耦合，dao层负责最简单的某个表增删查改的方法的实现，面向数据库的，而service层的主要作用是面向应用的，例如我注册一个账户，往往不只是在数据库的用户表里添加一个用户记录那么简单，还有像保存用户照片，监测用户是否存在等操作，那么这里就交给service层来操作了
 
@@ -580,7 +580,334 @@
 6. 使用单元测试，在`src/test/java`里的`com.iaoe.jwExp.service`里面创建一个ShopServiceTest类
 
    ```java
+   package com.iaoe.jwExp.service;
    
+import static org.junit.Assert.assertEquals;
+   
+   import java.io.File;
+   import java.util.Date;
+   
+   import org.junit.Test;
+   import org.springframework.beans.factory.annotation.Autowired;
+   import org.springframework.web.multipart.commons.CommonsMultipartFile;
+   
+   import com.iaoe.jwExp.BaseTest;
+   import com.iaoe.jwExp.dto.ShopExecution;
+   import com.iaoe.jwExp.entity.Area;
+   import com.iaoe.jwExp.entity.PersonInfo;
+   import com.iaoe.jwExp.entity.Shop;
+   import com.iaoe.jwExp.entity.ShopCategory;
+   import com.iaoe.jwExp.enums.ShopStateEnum;
+   
+   public class ShopServiceTest extends BaseTest{
+   	@Autowired
+   	private ShopService shopService;
+   	
+   	@Test
+   	public void testAddShop(){
+   		Shop shop = new Shop();
+   		PersonInfo owner = new PersonInfo();
+   		Area area = new Area();
+   		ShopCategory sc = new ShopCategory();
+   		owner.setUserId(1L);
+   		area.setAreaId(2);
+   		sc.setShopCategoryId(1L);
+   		shop.setOwner(owner);
+   		shop.setArea(area);
+   		shop.setShopCategory(sc);
+   		shop.setShopName("service测试");
+   		shop.setShopDesc("mytest1");
+   		shop.setShopAddr("testaddr1");
+   		shop.setPhone("12345678901");
+   		shop.setPriority(1);
+   		shop.setCreateTime(new Date());
+   		shop.setLastEditTime(new Date());
+   		//为了规范点改成这个
+   		shop.setEnableStatus(ShopStateEnum.CHECK.getState());
+   		shop.setAdvice("审核中");
+   		File shopImg = new File("C:\\Users\\iAoe\\Desktop\\1.jpg");
+   		ShopExecution se = shopService.addShop(shop, shopImg);
+   		assertEquals(ShopStateEnum.CHECK.getState(), se.getState());
+   	}
+   }
+   ```
+   
+
+### SUI-mobile 前端页面的展示
+
+> 这里使用的是sui-moblile，官网地址为[SUI Mobile](http://m.sui.taobao.org/)，感觉有点老了，没办法，先跟着走一遍先，这个框架是由淘宝推出的，主要好处是响应式布局以及防ios的界面，和jquery类似，导入一些css和script就行
+
+```html
+<link rel="stylesheet" href="//g.alicdn.com/msui/sm/0.6.2/css/sm.min.css">
+<link rel="stylesheet" href="//g.alicdn.com/msui/sm/0.6.2/css/sm-extend.min.css">
+
+<script type='text/javascript' src='//g.alicdn.com/sj/lib/zepto/zepto.min.js' charset='utf-8'></script>
+<script type='text/javascript' src='//g.alicdn.com/msui/sm/0.6.2/js/sm.min.js' charset='utf-8'></script>
+<script type='text/javascript' src='//g.alicdn.com/msui/sm/0.6.2/js/sm-extend.min.js' charset='utf-8'></script>
+```
+
+这里为了快速开发，直接在原有的案例基础上修改[SUI Mobile Demo](http://m.sui.taobao.org/demos/)，大致生成的页面如图，具体源码太大就不贴了
+
+![](https://ws1.sinaimg.cn/large/006bBmqIgy1g4ee9rc0amj30ck0nj74m.jpg)
+
+### (路由) Controller实现页面的跳转
+
+> 在上面我们已经实现了web页面，假定为`shopoperation.html`，如果放在`/jwExp/src/main/webapp`这个目录下的话，那么跳转的路径是`http://localhost:8080/jwExp/shopoperation.html`，我们知道，如果单纯的将html暴露在路径上是不好管理的，我们需要将其统一管理起来，那么就可以通过controller来实现，这就是controller的第一个功能：路由
+
+1. 将`shopoperation.html`迁移到`/jwExp/src/main/webapp/WEB-INF/html/shop/shopoperation.html`下面，我们知道，如果将文件放在WEB-INF目录下的话，是没办法直接通过路径访问的，像`http://localhost:8080/jwExp/WEB-INF/html/shop/shopoperation.html`是没办法到达这个页面的
+
+2. 在`com.iaoe.jwExp.shopAdmin`书写我们的controller层，`ShopAdminController`
+
+   ```java
+   package com.iaoe.jwExp.web.shopadmin;
+   
+   import org.springframework.stereotype.Controller;
+   import org.springframework.web.bind.annotation.RequestMapping;
+   import org.springframework.web.bind.annotation.RequestMethod;
+   
+   //这个控制层用于控制前端的地址，相当于路由
+   @Controller
+   @RequestMapping(value = "/shopadmin",method=RequestMethod.GET)
+   public class ShopAdminController {
+   	@RequestMapping(value="/shopoperation")
+   	public String shopOperation() {
+   		return "shop/shopoperation";
+   	}
+   }
    ```
 
+   通过`requestMapping`我们可以得知，这个路由的路径是`http://localhost:8080/shopadmin/shopoperation`，那么为什么可以到达这个我们设置的html页面呢？之前我们配置spring-web.xml的时候里面有这么一段
+
+   ```xml
+   	<!-- 3.定义视图解析器 -->
+   	<bean id="viewResolver"
+   		class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+   		<property name="prefix" value="/WEB-INF/html/"></property>
+   		<property name="suffix" value=".html"></property>
+   	</bean>
+   ```
+
+   也就是说return回来的是`shop/shopoperation`这个路径，但是已经给它加了前后缀`/WEB-INF/html/`和`.html`了，所以能够顺利访问到这个页面
+
+   ![](https://ws1.sinaimg.cn/large/006bBmqIly1g4eeydcqwrj30u10cnab8.jpg)
+
+### （前后端对接）Controller完成店铺注册功能
+
+1. controller实现注册接口，这里需要解析前端发来的信息和图片
+
+   ```java
+    package com.iaoe.jwExp.web.shopadmin;
    
+   import java.util.HashMap;
+   import java.util.Map;
+   
+   import javax.servlet.http.HttpServletRequest;
+   
+   import org.springframework.beans.factory.annotation.Autowired;
+   import org.springframework.stereotype.Controller;
+   import org.springframework.web.bind.annotation.RequestMapping;
+   import org.springframework.web.bind.annotation.RequestMethod;
+   import org.springframework.web.bind.annotation.ResponseBody;
+   import org.springframework.web.multipart.MultipartHttpServletRequest;
+   import org.springframework.web.multipart.commons.CommonsMultipartFile;
+   import org.springframework.web.multipart.commons.CommonsMultipartResolver;
+   
+   import com.fasterxml.jackson.databind.ObjectMapper;
+   import com.iaoe.jwExp.dto.ShopExecution;
+   import com.iaoe.jwExp.entity.PersonInfo;
+   import com.iaoe.jwExp.entity.Shop;
+   import com.iaoe.jwExp.enums.ShopStateEnum;
+   import com.iaoe.jwExp.service.ShopService;
+   import com.iaoe.jwExp.util.HttpServletRequestUtil;
+   
+   @Controller
+   @RequestMapping("/shopadmin")
+   public class ShopManagementController {
+   	@Autowired
+   	private ShopService shopService;
+   	
+   	/**
+   	 * 注册店铺功能
+   	 * @param request
+   	 * @return
+   	 */
+   	@RequestMapping(value = "/registershop", method = RequestMethod.POST)
+   	@ResponseBody
+   	private Map<String, Object> registerShop(HttpServletRequest request) {
+   		Map<String, Object> modelMap = new HashMap<String, Object>();
+   		// 1.接受前端发来的请求并转换相应的参数，包括前端发来的店铺信息和图片信息
+   		// 这里先获取请求里面有个叫shopStr的参数
+   		String shopStr = HttpServletRequestUtil.getString(request, "shopStr");
+   		// 新建一个用于解析json的对象，这个在之前maven的导包里面有一个json解析包
+   		ObjectMapper mapper = new ObjectMapper();
+   		Shop shop = null;
+   		try {
+   			// 将json解析到shop这个类里面
+   			shop = mapper.readValue(shopStr, Shop.class);
+   		} catch (Exception e) {
+   			// 如果出现意外，那么返回的错误信息
+   			modelMap.put("success", false);
+   			modelMap.put("errMsg", e.getMessage());
+   			return modelMap;
+   		}
+   		// 这里用于获取请求里面的图片
+   		CommonsMultipartFile shopImg = null;
+   		CommonsMultipartResolver commonsMultipartResolver = new CommonsMultipartResolver(
+   				request.getSession().getServletContext());
+   		//判断是否存在这个文件流
+   		if(commonsMultipartResolver.isMultipart(request)) {
+   			MultipartHttpServletRequest multipartHttpServletRequest = (MultipartHttpServletRequest) request;
+   			//获取参数为shopImg的图片
+   			shopImg = (CommonsMultipartFile) multipartHttpServletRequest.getFile("shopImg");
+   		}else {
+   			modelMap.put("success", false);
+   			modelMap.put("errMsg", "上传图片不能为空");
+   			return modelMap;
+   		}
+   		//2.注册店铺功能
+   		if(shopImg!=null && shop!=null) {
+   			PersonInfo owner = new PersonInfo();
+   			owner.setUserId(1L);
+   			shop.setOwner(owner);
+   			ShopExecution se = shopService.addShop(shop, shopImg);
+   			if(se.getState()==ShopStateEnum.CHECK.getState()) {
+   				modelMap.put("success", true);
+   			}else {
+   				//如果添加失败，返回之前枚举类型的失败原因
+   				modelMap.put("success", false);
+   				modelMap.put("errMsg", se.getStateInfo());
+   			}
+   			return modelMap;
+   		}else {
+   			modelMap.put("success", false);
+   			modelMap.put("errMsg", "店铺信息不能为空");
+   		}
+   		return modelMap;
+   	}
+   }
+   ```
+
+2. js实现提交表单和获取数据，主要实现的功能是在进入这个页面的时候将区域信息和店铺分类信息更新在页面，这里我们放在`src/main/webapp/resources/js/shop`里，命名为shopoperation.js
+
+```javascript
+/**
+ * 这个是shopoperation获取后台信息以及提交页面信息的操作
+ */
+$(function(){
+	var initUrl = '/jwExp/o2o/getshopinitinfo';
+	var registerShopUrl = '/jwExp/shopadmin/registershop';
+	alert(initUrl);
+	getShopInitInfo();
+	//获取区域信息和分类信息
+	function getShopInitInfo(){
+		//建立连接，获取返回的信息
+		$.getJSON(initUrl,function(data){
+			if(data.success){
+				var tempHtml = '';
+				var tempAreaHtml = '';
+				//遍历分类信息
+				data.shopCategoryList.map(function(item, index) {
+					tempHtml += '<option data-id="' + item.shopCategoryId
+							+ '">' + item.shopCategoryName + '</option>';
+				});
+				//遍历区域信息
+				data.areaList.map(function(item, index) {
+					tempAreaHtml += '<option data-id="' + item.areaId + '">'
+							+ item.areaName + '</option>';
+				});
+				//将信息放到相应的区域中
+				$('#shop-category').html(tempHtml);
+				$('#area').html(tempAreaHtml);
+			}
+		});
+	}
+	//点击提交后提交内容信息
+	$('#submit').click(function(){
+		var shop = {};
+
+		//获取表单中的信息
+		shop.shopName = $('#shop-name').val();
+		shop.shopAddr = $('#shop-addr').val();
+		shop.phone = $('#shop-phone').val();
+		shop.shopDesc = $('#shop-desc').val();
+
+		//shopCategory通过这种方式来获取子选项
+		shop.shopCategory = {
+			shopCategoryId : $('#shop-category').find('option').not(function() {
+				return !this.selected;
+			}).data('id')
+		};
+		shop.area = {
+			areaId : $('#area').find('option').not(function() {
+				return !this.selected;
+			}).data('id')
+		};
+
+		//获取图片流
+		var shopImg = $("#shop-img")[0].files[0];
+		var formData = new FormData();
+		formData.append('shopImg', shopImg);
+		//将shop通过json的方式传递
+		formData.append('shopStr', JSON.stringify(shop));
+//		var verifyCodeActual = $('#j_captcha').val();
+//		if (!verifyCodeActual) {
+//			$.toast('请输入验证码！');
+//			return;
+//		}
+//		formData.append("verifyCodeActual", verifyCodeActual);
+		$.ajax({
+			url : registerShopUrl,
+			type : 'POST',
+			// contentType: "application/x-www-form-urlencoded; charset=utf-8",
+			data : formData,
+			contentType : false,
+			processData : false,
+			cache : false,
+			success : function(data) {
+				if (data.success) {
+					$.toast('提交成功！');
+//					if (isEdit){
+//						$('#captcha_img').click();
+//					} else{
+//						window.location.href="/shop/shoplist";
+//					}
+				} else {
+					$.toast('提交失败！' + data.errMsg);
+//					$('#captcha_img').click();
+				}
+			}
+		});
+	});
+})
+```
+
+注意，在html里引入的时候的时候，位置为`../resources/js/shop/shopoperation.js`
+
+```java
+package com.iaoe.jwExp.service;
+
+import static org.junit.Assert.assertEquals;
+
+import java.util.List;
+
+import org.junit.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+
+import com.iaoe.jwExp.BaseTest;
+import com.iaoe.jwExp.dao.ShopCategoryDao;
+import com.iaoe.jwExp.entity.ShopCategory;
+
+public class ShopCategoryDaoTest extends BaseTest{
+	@Autowired
+	private ShopCategoryDao shopCategoryDao;
+	
+	@Test
+	public void testQueryShopCategory(){
+		List<ShopCategory> shopCategoryList = shopCategoryDao.queryShopCategory(new ShopCategory());
+		assertEquals(1, shopCategoryList.size());
+	}
+	
+}
+
+```
+

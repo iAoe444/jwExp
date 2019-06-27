@@ -25,7 +25,7 @@ public class ImageUtil {
 	 * @param targetAddr 这个是存储的图片路径
 	 * @return
 	 */
-	public static String generateThumbnail(File thumbnail,String targetAddr) {
+	public static String generateThumbnail(CommonsMultipartFile thumbnail,String targetAddr) {
 		//取一个时间+随机的文件名
 		String realFileName = getRandomFileName();
 		//获取文件扩展名
@@ -38,7 +38,7 @@ public class ImageUtil {
 		File dest = new File(PathUtil.getImgBasePath() + relativeAddr);
 		//操作图片
 		try {
-			Thumbnails.of(thumbnail).size(200, 200)
+			Thumbnails.of(thumbnail.getInputStream()).size(200, 200)
 			.watermark(Positions.BOTTOM_RIGHT, ImageIO.read(new File(basePath + "watermark.png")), 0.25f)
 			.outputQuality(0.8f).toFile(dest);
 		}catch(IOException e) {
@@ -64,8 +64,8 @@ public class ImageUtil {
 	 * @param thumbnail
 	 * @return
 	 */
-	private static String getFileExtension(File cFile) {
-		String originalFileName = cFile.getName();
+	private static String getFileExtension(CommonsMultipartFile cFile) {
+		String originalFileName = cFile.getOriginalFilename();
 		//获取最后一个点之后的东西，也就是扩展名
 		return originalFileName.substring(originalFileName.lastIndexOf("."));
 	}
