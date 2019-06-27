@@ -1260,7 +1260,116 @@ public class ShopCategoryDaoTest extends BaseTest{
 
 ![](https://ws1.sinaimg.cn/large/006bBmqIgy1g4fsvup0inj31580q6acq.jpg)
 
-   
+### Service层实现店铺编辑功能
 
+1. 首先修改shopservice接口
+
+   ```java
+   	/**
+   	 * 通过店铺ID返回店铺信息
+   	 * @param shopId
+   	 * @return
+   	 */
+   	Shop getByShopId(long shopId);
+   	
+   	/**
+   	 * 更新店铺信息，包括对图片的处理
+   	 * @param shop
+   	 * @param shopImgInputStream
+   	 * @param fileName
+   	 * @return
+   	 * @throws ShopOperationException
+   	 */
+   	ShopExecution modifyShop(Shop shop, InputStream shopImgInputStream,String fileName) throws ShopOperationException;
+   	
+   	/**
+   	 * 添加店铺操作，包括对图片的处理
+   	 * @param shop
+   	 * @param shopImgInputStream
+   	 * @param fileName
+   	 * @return
+   	 * @throws ShopOperationException
+   	 */
+   ```
+
+2. 接着实现这个接口`shopServiceImpl`
+
+   ```java
+   	// 根据店铺id返回店铺信息
+   	@Override
+   	public Shop getByShopId(long shopId) {
+   		return shopDao.queryByShopId(shopId);
+   	}
    
+   	@Override
+   	public ShopExecution modifyShop(Shop shop, InputStream shopImgInputStream, String fileName)
+   			throws ShopOperationException {
+   		if (shop == null || shop.getShopId() == null) {
+   			return new ShopExecution(ShopStateEnum.NULL_SHOP_INFO);
+   		} else {
+   			try {
+   			// 1.判断是否需要处理图片
+   			if (shopImgInputStream != null && fileName != null && !"".equals(fileName)) {
+   				Shop tempShop = shopDao.queryByShopId(shop.getShopId());
+   				// 删除原来的图片
+   				if (tempShop.getShopImg() != null) {
+   					ImageUtil.deleteFileOrPath(tempShop.getShopImg());
+   				}
+   				// 添加图片
+   				addShopImg(shop, shopImgInputStream, fileName);
+   			}
+   			// 2.更新店铺消息
+   			shop.setLastEditTime(new Date());
+   			int effectedNum = shopDao.updateShop(shop);
+   			if (effectedNum <= 0) {
+   				//更新失败返回错误信息
+   				return new ShopExecution(ShopStateEnum.INNER_ERROR);
+   			} else {
+   				//更新成功
+   				shop = shopDao.queryByShopId(shop.getShopId());
+   				return new ShopExecution(ShopStateEnum.SUCCESS, shop);
+   			}
+   			}catch (Exception e) {
+   				throw new ShopOperationException("modifyShp error:" + e.getMessage());
+   			}
+   		}
+   	}
+   ```
+
+3. 上面新增了一个工具方法，是添加再原有的`ImageUtil`里面的，实现的功能是如果更新了新的图片，那么就删除原来的图片
+
+   ```java
+   	/**
+   	 *   判断storePath是文件的路径还是目录的路径，
+   	 *   如果storePath是文件路径则删除该文件，
+   	 *   如果storePath是目录路径则删除该目录下的所有文件
+   	 * @param storePath
+   	 */
+   	public static void deleteFileOrPath(String storePath) {
+   		File fileOrPath = new File(PathUtil.getImgBasePath()+storePath);
+   		if(fileOrPath.exists()) {
+   			if(fileOrPath.isDirectory()) {
+   				File files[] = fileOrPath.listFiles();
+   				for(int i=0;i<files.length;i++) {
+   					files[i].delete();
+   				}
+   			}
+   			fileOrPath.delete();
+   		}
+   	}
+   ```
+
+4. 最后junit测试一下`ShopServiceTest`
+
+   ```java
+   	@Test
+   	public void testModifyShop() throws ShopOperationException,FileNotFoundException{
+   		Shop shop = shopService.getByShopId(2L);
+   		shop.setShopName("修改后的店铺名称");
+   		File shopImg = new File("C:\\Users\\iAoe\\Desktop\\1.jpg");
+   		InputStream shopImgInputStream = new FileInputStream(shopImg);
+   		ShopExecution se = shopService.modifyShop(shop, shopImgInputStream, "1.jpg");
+   		System.out.println("新的图片地址:" + se.getShop().getShopImg());
+   	}
+   ```
 
