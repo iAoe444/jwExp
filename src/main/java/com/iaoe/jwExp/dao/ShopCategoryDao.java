@@ -7,5 +7,5 @@ import org.apache.ibatis.annotations.Param;
 import com.iaoe.jwExp.entity.ShopCategory;
 
 public interface ShopCategoryDao {
-	List<ShopCategory> queryShopCategory(@Param("shopCategoryCondition") ShopCategory shopCategory);
+	List<ShopCategory> queryShopCategory(@Param("shopCategoryCondition") ShopCategory shopCategoryCondition);
 }

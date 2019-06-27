@@ -17,7 +17,7 @@
 		tb_shop_category
 		<where>
 			<if test="shopCategoryCondition.parent!=null">
-				and parent_id=#{shopCategoryCodition.parent.shopCategoryId}
+				and parent_id=#{shopCategoryCondition.parent.shopCategoryId}
 			</if>
 		</where>
 	</select>
