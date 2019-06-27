@@ -1373,3 +1373,114 @@ public class ShopCategoryDaoTest extends BaseTest{
    	}
    ```
 
+### controller层实现店铺编辑操作
+
+1. 在`ShopManagementController`新增一个根据shopId返回商店信息的操作
+
+   > 这里要返回的是店铺的信息以及区域列表，这里设定区域列表可以修改，商铺分类不可以修改
+
+   ```java
+   	/**
+   	 * 根据shopId返回区域列表等信息
+   	 * @param request
+   	 * @return
+   	 */
+   	@RequestMapping(value="/getshopbyid",method=RequestMethod.GET)
+   	@ResponseBody
+   	private Map<String,Object> getShopById(HttpServletRequest request){
+   		Map<String, Object> modelMap = new HashMap<String, Object>();
+   		Long shopId = HttpServletRequestUtil.getLong(request, "shopId");
+   		if(shopId > -1) {
+   			try {
+   				Shop shop = shopService.getByShopId(shopId);
+   				List<Area> areaList = areaService.getAreaList();
+   				modelMap.put("shop", shop);
+   				modelMap.put("areaList", areaList);
+   				modelMap.put("success", true);
+   			}catch(Exception e) {
+   				modelMap.put("success", false);
+   				modelMap.put("errMsg", e.getMessage());
+   			}
+   		}else {
+   			modelMap.put("success", false);
+   			modelMap.put("errMsg", "empty shopId");
+   		}
+   		return modelMap;
+   	}
+   ```
+
+2. 同样是在`ShopManagementController`新增一个编辑店铺的操作
+
+   > 这里主要是修改之前新增店铺的操作，由于owner不可变，所以把owner的操作去掉
+
+   ```java
+   	/**
+   	 * 编辑店铺功能
+   	 * @param request
+   	 * @return
+   	 */
+   	@RequestMapping(value = "/modifyshop", method = RequestMethod.POST)
+   	@ResponseBody
+   	private Map<String, Object> modifyShop(HttpServletRequest request) {
+   		Map<String, Object> modelMap = new HashMap<String, Object>();
+   		if(!CodeUtil.checkVerifyCode(request)) {
+   			modelMap.put("success", false);
+   			modelMap.put("errMsg", "验证码错误");
+   			return modelMap;
+   		}
+   		// 1.接受前端发来的请求并转换相应的参数，包括前端发来的店铺信息和图片信息
+   		// 这里先获取请求里面有个叫shopStr的参数
+   		String shopStr = HttpServletRequestUtil.getString(request, "shopStr");
+   		// 新建一个用于解析json的对象，这个在之前maven的导包里面有一个json解析包
+   		ObjectMapper mapper = new ObjectMapper();
+   		Shop shop = null;
+   		try {
+   			// 将json解析到shop这个类里面
+   			shop = mapper.readValue(shopStr, Shop.class);
+   		} catch (Exception e) {
+   			// 如果出现意外，那么返回的错误信息
+   			modelMap.put("success", false);
+   			modelMap.put("errMsg", e.getMessage());
+   			return modelMap;
+   		}
+   		// 这里用于获取请求里面的图片
+   		CommonsMultipartFile shopImg = null;
+   		CommonsMultipartResolver commonsMultipartResolver = new CommonsMultipartResolver(
+   				request.getSession().getServletContext());
+   		//判断是否存在这个文件流
+   		if(commonsMultipartResolver.isMultipart(request)) {
+   			MultipartHttpServletRequest multipartHttpServletRequest = (MultipartHttpServletRequest) request;
+   			//获取参数为shopImg的图片
+   			shopImg = (CommonsMultipartFile) multipartHttpServletRequest.getFile("shopImg");
+   		}
+   		//2.编辑店铺功能
+   		if(shopImg!=null && shop.getShopId()!=null) {
+   			ShopExecution se;
+   			try {
+   				if (shopImg == null) {
+   					se = shopService.modifyShop(shop, null, null);
+   				} else {
+   					se = shopService.modifyShop(shop, shopImg.getInputStream(), shopImg.getOriginalFilename());
+   				}
+   				if(se.getState()==ShopStateEnum.SUCCESS.getState()) {
+   					modelMap.put("success", true);
+   				}else {
+   					//如果添加失败，返回之前枚举类型的失败原因
+   					modelMap.put("success", false);
+   					modelMap.put("errMsg", se.getStateInfo());
+   				}
+   			} catch (ShopOperationException | IOException e) {
+   				modelMap.put("success", false);
+   				modelMap.put("errMsg", e.getMessage());
+   				e.printStackTrace();
+   			}
+   			return modelMap;
+   		}else {
+   			modelMap.put("success", false);
+   			modelMap.put("errMsg", "请输入店铺id");
+   		}
+   		return modelMap;
+   	}
+   ```
+
+   
