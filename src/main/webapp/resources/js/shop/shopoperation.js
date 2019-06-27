@@ -2,28 +2,24 @@
  * 这个是shopoperation获取后台信息以及提交页面信息的操作
  */
 $(function(){
-	var initUrl = '/jwExp/o2o/getshopinitinfo';
+	var initUrl = '/jwExp/shopadmin/getshopinitinfo';
 	var registerShopUrl = '/jwExp/shopadmin/registershop';
-	alert(initUrl);
 	getShopInitInfo();
 	//获取区域信息和分类信息
 	function getShopInitInfo(){
 		//建立连接，获取返回的信息
-		$.getJSON(initUrl,function(data){
-			if(data.success){
+		$.getJSON(initUrl, function(data) {
+			if (data.success) {
 				var tempHtml = '';
 				var tempAreaHtml = '';
-				//遍历分类信息
 				data.shopCategoryList.map(function(item, index) {
 					tempHtml += '<option data-id="' + item.shopCategoryId
 							+ '">' + item.shopCategoryName + '</option>';
 				});
-				//遍历区域信息
 				data.areaList.map(function(item, index) {
 					tempAreaHtml += '<option data-id="' + item.areaId + '">'
 							+ item.areaName + '</option>';
 				});
-				//将信息放到相应的区域中
 				$('#shop-category').html(tempHtml);
 				$('#area').html(tempAreaHtml);
 			}
@@ -57,12 +53,14 @@ $(function(){
 		formData.append('shopImg', shopImg);
 		//将shop通过json的方式传递
 		formData.append('shopStr', JSON.stringify(shop));
-//		var verifyCodeActual = $('#j_captcha').val();
-//		if (!verifyCodeActual) {
-//			$.toast('请输入验证码！');
-//			return;
-//		}
-//		formData.append("verifyCodeActual", verifyCodeActual);
+		//获取验证码内容
+		var verifyCodeActual = $('#j_captcha').val();
+		//如果为空
+		if (!verifyCodeActual) {
+			$.toast('请输入验证码！');
+			return;
+		}
+		formData.append("verifyCodeActual", verifyCodeActual);
 		$.ajax({
 			url : registerShopUrl,
 			type : 'POST',
@@ -81,7 +79,7 @@ $(function(){
 //					}
 				} else {
 					$.toast('提交失败！' + data.errMsg);
-//					$('#captcha_img').click();
+					$('#captcha_img').click();
 				}
 			}
 		});

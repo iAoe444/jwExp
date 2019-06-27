@@ -2,13 +2,12 @@ package com.iaoe.jwExp.util;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Random;
 
 import javax.imageio.ImageIO;
-
-import org.springframework.web.multipart.commons.CommonsMultipartFile;
 
 import net.coobird.thumbnailator.Thumbnails;
 import net.coobird.thumbnailator.geometry.Positions;
@@ -25,11 +24,11 @@ public class ImageUtil {
 	 * @param targetAddr 这个是存储的图片路径
 	 * @return
 	 */
-	public static String generateThumbnail(CommonsMultipartFile thumbnail,String targetAddr) {
+	public static String generateThumbnail(InputStream thumbnailInputStream,String fileName,String targetAddr) {
 		//取一个时间+随机的文件名
 		String realFileName = getRandomFileName();
 		//获取文件扩展名
-		String extension = getFileExtension(thumbnail);
+		String extension = getFileExtension(fileName);
 		//创建目标路径
 		makeDirPath(targetAddr);
 		//组合相对路径名
@@ -38,7 +37,7 @@ public class ImageUtil {
 		File dest = new File(PathUtil.getImgBasePath() + relativeAddr);
 		//操作图片
 		try {
-			Thumbnails.of(thumbnail.getInputStream()).size(200, 200)
+			Thumbnails.of(thumbnailInputStream).size(200, 200)
 			.watermark(Positions.BOTTOM_RIGHT, ImageIO.read(new File(basePath + "watermark.png")), 0.25f)
 			.outputQuality(0.8f).toFile(dest);
 		}catch(IOException e) {
@@ -64,10 +63,9 @@ public class ImageUtil {
 	 * @param thumbnail
 	 * @return
 	 */
-	private static String getFileExtension(CommonsMultipartFile cFile) {
-		String originalFileName = cFile.getOriginalFilename();
+	private static String getFileExtension(String fileName) {
 		//获取最后一个点之后的东西，也就是扩展名
-		return originalFileName.substring(originalFileName.lastIndexOf("."));
+		return fileName.substring(fileName.lastIndexOf("."));
 	}
 
 	/**

@@ -3,7 +3,8 @@
     PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
     "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.iaoe.jwExp.dao.ShopCategoryDao">
-	<select id="queryShopCategory" resultType="com.iaoe.jwExp.entity.ShopCategory">
+	<select id="queryShopCategory"
+		resultType="com.iaoe.jwExp.entity.ShopCategory">
 		SELECT
 		shop_category_id,
 		shop_category_name,
@@ -16,9 +17,16 @@
 		FROM
 		tb_shop_category
 		<where>
+			<!-- 找出所有二级类别 -->
+			<if test="shopCategoryCondition!=null">
+				and parent_id is not null
+			</if>
 			<if test="shopCategoryCondition.parent!=null">
-				and parent_id=#{shopCategoryCondition.parent.shopCategoryId}
+				and
+				parent_id=#{shopCategoryCondition.parent.shopCategoryId}
 			</if>
 		</where>
+		ORDER BY
+		priority DESC
 	</select>
 </mapper>

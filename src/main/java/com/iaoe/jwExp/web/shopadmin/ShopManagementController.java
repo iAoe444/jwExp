@@ -1,6 +1,9 @@
 package com.iaoe.jwExp.web.shopadmin;
 
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import javax.servlet.http.HttpServletRequest;
@@ -16,10 +19,16 @@ import org.springframework.web.multipart.commons.CommonsMultipartResolver;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.iaoe.jwExp.dto.ShopExecution;
+import com.iaoe.jwExp.entity.Area;
 import com.iaoe.jwExp.entity.PersonInfo;
 import com.iaoe.jwExp.entity.Shop;
+import com.iaoe.jwExp.entity.ShopCategory;
 import com.iaoe.jwExp.enums.ShopStateEnum;
+import com.iaoe.jwExp.exceptions.ShopOperationException;
+import com.iaoe.jwExp.service.AreaService;
+import com.iaoe.jwExp.service.ShopCategoryService;
 import com.iaoe.jwExp.service.ShopService;
+import com.iaoe.jwExp.util.CodeUtil;
 import com.iaoe.jwExp.util.HttpServletRequestUtil;
 
 @Controller
@@ -27,6 +36,34 @@ import com.iaoe.jwExp.util.HttpServletRequestUtil;
 public class ShopManagementController {
 	@Autowired
 	private ShopService shopService;
+	@Autowired
+	private ShopCategoryService shopCategoryService;
+	@Autowired
+	private AreaService areaService;
+	
+	/**
+	 * 获取区域和分类列表
+	 * @return
+	 */
+	@RequestMapping(value="/getshopinitinfo",method=RequestMethod.GET)
+	@ResponseBody
+	private Map<String,Object> getShopInitInfo(){
+		Map<String, Object> modelMap = new HashMap<String, Object>();
+		List<ShopCategory> shopCategoryList = new ArrayList<ShopCategory>();
+		List<Area> areaList = new ArrayList<Area>();
+		try {
+			//获取区域和分类列表
+			shopCategoryList = shopCategoryService.getShopCategoryList(new ShopCategory());
+			areaList = areaService.getAreaList();
+			modelMap.put("shopCategoryList", shopCategoryList);
+			modelMap.put("areaList", areaList);
+			modelMap.put("success", true);
+		} catch (Exception e) {
+			modelMap.put("success", false);
+			modelMap.put("errMsg", e.getMessage());
+		}
+		return modelMap;
+	}
 	
 	/**
 	 * 注册店铺功能
@@ -37,6 +74,11 @@ public class ShopManagementController {
 	@ResponseBody
 	private Map<String, Object> registerShop(HttpServletRequest request) {
 		Map<String, Object> modelMap = new HashMap<String, Object>();
+		if(!CodeUtil.checkVerifyCode(request)) {
+			modelMap.put("success", false);
+			modelMap.put("errMsg", "验证码错误");
+			return modelMap;
+		}
 		// 1.接受前端发来的请求并转换相应的参数，包括前端发来的店铺信息和图片信息
 		// 这里先获取请求里面有个叫shopStr的参数
 		String shopStr = HttpServletRequestUtil.getString(request, "shopStr");
@@ -71,13 +113,20 @@ public class ShopManagementController {
 			PersonInfo owner = new PersonInfo();
 			owner.setUserId(1L);
 			shop.setOwner(owner);
-			ShopExecution se = shopService.addShop(shop, shopImg);
-			if(se.getState()==ShopStateEnum.CHECK.getState()) {
-				modelMap.put("success", true);
-			}else {
-				//如果添加失败，返回之前枚举类型的失败原因
+			ShopExecution se;
+			try {
+				se = shopService.addShop(shop, shopImg.getInputStream(), shopImg.getOriginalFilename());
+				if(se.getState()==ShopStateEnum.CHECK.getState()) {
+					modelMap.put("success", true);
+				}else {
+					//如果添加失败，返回之前枚举类型的失败原因
+					modelMap.put("success", false);
+					modelMap.put("errMsg", se.getStateInfo());
+				}
+			} catch (ShopOperationException | IOException e) {
 				modelMap.put("success", false);
-				modelMap.put("errMsg", se.getStateInfo());
+				modelMap.put("errMsg", e.getMessage());
+				e.printStackTrace();
 			}
 			return modelMap;
 		}else {

@@ -2,7 +2,7 @@
 
 > 书写于2019/06/25  9:59
 
-## 1 店铺功能的实现
+## 1 店铺注册功能的实现
 
 ```
 这里功能的实现的步骤主要分下面的几步：
@@ -582,15 +582,17 @@
    ```java
    package com.iaoe.jwExp.service;
    
+   ```
+
 import static org.junit.Assert.assertEquals;
-   
+
    import java.io.File;
    import java.util.Date;
-   
+
    import org.junit.Test;
    import org.springframework.beans.factory.annotation.Autowired;
    import org.springframework.web.multipart.commons.CommonsMultipartFile;
-   
+
    import com.iaoe.jwExp.BaseTest;
    import com.iaoe.jwExp.dto.ShopExecution;
    import com.iaoe.jwExp.entity.Area;
@@ -598,7 +600,7 @@ import static org.junit.Assert.assertEquals;
    import com.iaoe.jwExp.entity.Shop;
    import com.iaoe.jwExp.entity.ShopCategory;
    import com.iaoe.jwExp.enums.ShopStateEnum;
-   
+
    public class ShopServiceTest extends BaseTest{
    	@Autowired
    	private ShopService shopService;
@@ -637,14 +639,14 @@ import static org.junit.Assert.assertEquals;
 
 > 这里使用的是sui-moblile，官网地址为[SUI Mobile](http://m.sui.taobao.org/)，感觉有点老了，没办法，先跟着走一遍先，这个框架是由淘宝推出的，主要好处是响应式布局以及防ios的界面，和jquery类似，导入一些css和script就行
 
-```html
+​```html
 <link rel="stylesheet" href="//g.alicdn.com/msui/sm/0.6.2/css/sm.min.css">
 <link rel="stylesheet" href="//g.alicdn.com/msui/sm/0.6.2/css/sm-extend.min.css">
 
 <script type='text/javascript' src='//g.alicdn.com/sj/lib/zepto/zepto.min.js' charset='utf-8'></script>
 <script type='text/javascript' src='//g.alicdn.com/msui/sm/0.6.2/js/sm.min.js' charset='utf-8'></script>
 <script type='text/javascript' src='//g.alicdn.com/msui/sm/0.6.2/js/sm-extend.min.js' charset='utf-8'></script>
-```
+   ```
 
 这里为了快速开发，直接在原有的案例基础上修改[SUI Mobile Demo](http://m.sui.taobao.org/demos/)，大致生成的页面如图，具体源码太大就不贴了
 
@@ -911,3 +913,242 @@ public class ShopCategoryDaoTest extends BaseTest{
 
 ```
 
+### （其他功能）实现验证码功能
+
+> 这里的验证码使用的是[Maven Repository: com.github.penggle » kaptcha](https://mvnrepository.com/artifact/com.github.penggle/kaptcha)这个验证码工具
+
+```xml
+<!-- https://mvnrepository.com/artifact/com.github.penggle/kaptcha -->
+<dependency>
+    <groupId>com.github.penggle</groupId>
+    <artifactId>kaptcha</artifactId>
+    <version>2.3.2</version>
+</dependency>
+```
+
+1. 需要在web.xml里面添加如下代码
+
+   ```xml
+   	<servlet>
+   		<!-- 生成图片的Servlet -->
+   		<servlet-name>Kaptcha</servlet-name>
+   		<servlet-class>com.google.code.kaptcha.servlet.KaptchaServlet</servlet-class>
+   
+   		<!-- 是否有边框 -->
+   		<init-param>
+   			<param-name>kaptcha.border</param-name>
+   			<param-value>no</param-value>
+   		</init-param>
+   		<!-- 字体颜色 -->
+   		<init-param>
+   			<param-name>kaptcha.textproducer.font.color</param-name>
+   			<param-value>red</param-value>
+   		</init-param>
+   		<!-- 图片宽度 -->
+   		<init-param>
+   			<param-name>kaptcha.image.width</param-name>
+   			<param-value>135</param-value>
+   		</init-param>
+   		<!-- 使用哪些字符生成验证码 -->
+   		<init-param>
+   			<param-name>kaptcha.textproducer.char.string</param-name>
+   			<param-value>ACDEFHKPRSTWX345679</param-value>
+   		</init-param>
+   		<!-- 图片高度 -->
+   		<init-param>
+   			<param-name>kaptcha.image.height</param-name>
+   			<param-value>50</param-value>
+   		</init-param>
+   		<!-- 字体大小 -->
+   		<init-param>
+   			<param-name>kaptcha.textproducer.font.size</param-name>
+   			<param-value>43</param-value>
+   		</init-param>
+   		<!-- 干扰线的颜色 -->
+   		<init-param>
+   			<param-name>kaptcha.noise.color</param-name>
+   			<param-value>black</param-value>
+   		</init-param>
+   		<!-- 字符个数 -->
+   		<init-param>
+   			<param-name>kaptcha.textproducer.char.length</param-name>
+   			<param-value>4</param-value>
+   		</init-param>
+   		<!-- 使用哪些字体 -->
+   		<init-param>
+   			<param-name>kaptcha.textproducer.font.names</param-name>
+   			<param-value>Arial</param-value>
+   		</init-param>
+   	</servlet>
+   	<!-- 映射的url -->
+   	<servlet-mapping>
+   		<servlet-name>Kaptcha</servlet-name>
+   		<url-pattern>/Kaptcha</url-pattern>
+   	</servlet-mapping>
+   ```
+
+2. 接着需要在原来的html里面加入验证码层
+
+   ```html
+   <li>
+       <div class="item-content">
+           <div class="item-media">
+               <i class="icon icon-form-email"></i>
+           </div>
+           <div class="item-inner">
+               <label for="j_captcha" class="item-title label">验证码</label> <input
+                                                                                  id="j_captcha" name="j_captcha" type="text"
+                                                                                  class="form-control in" placeholder="验证码" />
+               <div class="item-input">
+                   <img id="captcha_img" alt="点击更换" title="点击更换"
+                        onclick="changeVerifyCode(this)" src="../Kaptcha" />
+               </div>
+           </div>
+       </div>
+   </li>
+   ```
+
+   这里还有一个changeVerifyCode的方法，方法如下
+
+   ```javascr
+   function changeVerifyCode(img) {
+   	//生成随机数
+   	img.src = "../Kaptcha?" + Math.floor(Math.random() * 100);
+   }
+   ```
+
+3. 修改之前的shopoperation.js代码
+
+   ```javascript
+   //点击提交后提交内容信息
+   	$('#submit').click(function(){
+   		var shop = {};
+   
+   		//获取表单中的信息
+   		shop.shopName = $('#shop-name').val();
+   		shop.shopAddr = $('#shop-addr').val();
+   		shop.phone = $('#shop-phone').val();
+   		shop.shopDesc = $('#shop-desc').val();
+   
+   		//shopCategory通过这种方式来获取子选项
+   		shop.shopCategory = {
+   			shopCategoryId : $('#shop-category').find('option').not(function() {
+   				return !this.selected;
+   			}).data('id')
+   		};
+   		shop.area = {
+   			areaId : $('#area').find('option').not(function() {
+   				return !this.selected;
+   			}).data('id')
+   		};
+   
+   		//获取图片流
+   		var shopImg = $("#shop-img")[0].files[0];
+   		var formData = new FormData();
+   		formData.append('shopImg', shopImg);
+   		//将shop通过json的方式传递
+   		formData.append('shopStr', JSON.stringify(shop));
+           //+++++++++++++++++++++++++++++++++++++++++++++++++++
+   		//获取验证码内容
+   		var verifyCodeActual = $('#j_captcha').val();
+   		//如果为空
+   		if (!verifyCodeActual) {
+   			$.toast('请输入验证码！');
+   			return;
+   		}
+   		formData.append("verifyCodeActual", verifyCodeActual);
+           //+++++++++++++++++++++++++++++++++++++++++++++++++++
+   		$.ajax({
+   			url : registerShopUrl,
+   			type : 'POST',
+   			// contentType: "application/x-www-form-urlencoded; charset=utf-8",
+   			data : formData,
+   			contentType : false,
+   			processData : false,
+   			cache : false,
+   			success : function(data) {
+   				if (data.success) {
+   					$.toast('提交成功！');
+   				} else {
+   					$.toast('提交失败！' + data.errMsg);
+                        //+++++++++++++++++++++++++++++++++++++++++++++++++++
+   					$('#captcha_img').click();
+                        //+++++++++++++++++++++++++++++++++++++++++++++++++++
+   				}
+   			}
+   		});
+   	});
+   ```
+
+4. 创建一个util类CodeUtil便于在controller层验证验证码
+
+   ```java
+   package com.iaoe.jwExp.util;
+   
+   import javax.servlet.http.HttpServletRequest;
+   
+   /**
+    * 用于对比验证码的正确性
+    * @author iAoe
+    *
+    */
+   public class CodeUtil {
+   	public static boolean checkVerifyCode(HttpServletRequest request) {
+   		//获取真实的验证码
+   		String verifyCodeExpected = (String) request.getSession().getAttribute(
+   				com.google.code.kaptcha.Constants.KAPTCHA_SESSION_KEY);
+   		//获取实际填写的验证码
+   		String verifyCodeActual = HttpServletRequestUtil.getString(request, "verifyCodeActual");
+   		if(verifyCodeActual==null||!verifyCodeActual.equals(verifyCodeExpected)) {
+   			return false;
+   		}
+   		return true;
+   	}
+   }
+   ```
+
+5. 在原有的Controller层的`ShopManagementController`里面加入验证码的验证
+
+   ```java
+   /**
+   	 * 注册店铺功能
+   	 * @param request
+   	 * @return
+   	 */
+   	@RequestMapping(value = "/registershop", method = RequestMethod.POST)
+   	@ResponseBody
+   	private Map<String, Object> registerShop(HttpServletRequest request) {
+   		Map<String, Object> modelMap = new HashMap<String, Object>();
+   		if(!CodeUtil.checkVerifyCode(request)) {
+   			modelMap.put("success", false);
+   			modelMap.put("errMsg", "验证码错误");
+   			return modelMap;
+   		}
+       //...........后面的省略了
+   ```
+
+6. 在这里由于上传文件的功能还未添加，需要导入一些包
+
+   `porm.xml`
+
+   ```xml
+   <!-- 文件上传的jar包 -->
+   <!-- https://mvnrepository.com/artifact/commons-fileupload/commons-fileupload -->
+   <dependency>
+       <groupId>commons-fileupload</groupId>
+       <artifactId>commons-fileupload</artifactId>
+       <version>1.3.2</version>
+   </dependency>
+   ```
+
+   `spring-web.xml`
+
+   ```xml
+   <!-- 文件上传解析器 -->
+   <bean id="multipartResolver"
+         class="org.springframework.web.multipart.commons.CommonsMultipartResolver">
+       <property name="defaultEncoding" value="utf-8"></property>
+       <property name="maxUploadSize" value="20971520"></property><!-- 最大上传文件大小单位是字节这里是20M -->
+       <property name="maxInMemorySize" value="20971520"></property>
+   </bean>
+   ```

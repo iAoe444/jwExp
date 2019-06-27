@@ -1,11 +1,12 @@
 package com.iaoe.jwExp.service.impl;
 
+import java.io.File;
+import java.io.InputStream;
 import java.util.Date;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.commons.CommonsMultipartFile;
 
 import com.iaoe.jwExp.dao.ShopDao;
 import com.iaoe.jwExp.dto.ShopExecution;
@@ -24,7 +25,8 @@ public class ShopServiceImpl implements ShopService{
 	//使用Transactional保证事务的原子性
 	@Override
 	@Transactional
-	public ShopExecution addShop(Shop shop, CommonsMultipartFile shopImg) {
+	public ShopExecution addShop(Shop shop, InputStream shopImgInputStream, String fileName)
+			throws ShopOperationException {
 		//空值判断
 		if(shop==null) {
 			return new ShopExecution(ShopStateEnum.NULL_SHOP_INFO);
@@ -39,10 +41,10 @@ public class ShopServiceImpl implements ShopService{
 				//这里要用RuntimeException才能保证原子性
 				throw new ShopOperationException("店铺创建失败");
 			} else {
-				if(shopImg!=null) {
+				if(shopImgInputStream!=null) {
 					try {
 						//如果参数时引用类型的话，那么传递的是指针
-						addShopImg(shop,shopImg);
+						addShopImg(shop,shopImgInputStream,fileName);
 					}catch(Exception e) {
 						throw new ShopOperationException("addShopImg error:"+e.getMessage());
 					}
@@ -59,10 +61,10 @@ public class ShopServiceImpl implements ShopService{
 		return new ShopExecution(ShopStateEnum.CHECK,shop);
 	}
 	//添加图片
-	private void addShopImg(Shop shop,CommonsMultipartFile shopImg) {
+	private void addShopImg(Shop shop,InputStream shopImgInputStream,String fileName) {
 		//获取shop图片的相对值路径
 		String dest = PathUtil.getShopImagePath(shop.getShopId());
-		String shopImageAddr = ImageUtil.generateThumbnail(shopImg, dest);
+		String shopImageAddr = ImageUtil.generateThumbnail(shopImgInputStream, fileName,dest);
 		shop.setShopImg(shopImageAddr);
 	}
 }

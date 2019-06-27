@@ -1,10 +1,11 @@
 package com.iaoe.jwExp.service;
 
-import org.springframework.web.multipart.commons.CommonsMultipartFile;
+import java.io.InputStream;
 
 import com.iaoe.jwExp.dto.ShopExecution;
 import com.iaoe.jwExp.entity.Shop;
+import com.iaoe.jwExp.exceptions.ShopOperationException;
 
 public interface ShopService {
-	ShopExecution addShop(Shop shop, CommonsMultipartFile shopImg);
+	ShopExecution addShop(Shop shop, InputStream shopImgInputStream,String fileName) throws ShopOperationException;
 }
