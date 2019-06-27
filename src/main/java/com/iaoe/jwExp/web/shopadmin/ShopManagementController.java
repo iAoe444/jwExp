@@ -204,7 +204,7 @@ public class ShopManagementController {
 			shopImg = (CommonsMultipartFile) multipartHttpServletRequest.getFile("shopImg");
 		}
 		//2.编辑店铺功能
-		if(shopImg!=null && shop.getShopId()!=null) {
+		if(shop!=null && shop.getShopId()!=null) {
 			ShopExecution se;
 			try {
 				if (shopImg == null) {

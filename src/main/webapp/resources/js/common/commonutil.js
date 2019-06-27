@@ -22,6 +22,7 @@ Date.prototype.Format = function(fmt) {
 	return fmt;
 }
 
+//根据url获取参数名后取它的值，例如?shopId=1，那么就会返回1
 function getQueryString(name) {
 	var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)");
 	var r = window.location.search.substr(1).match(reg);

@@ -2,9 +2,48 @@
  * 这个是shopoperation获取后台信息以及提交页面信息的操作
  */
 $(function(){
+	//获取传入参数的值
+	var shopId = getQueryString('shopId');
+	//判断是编辑状态还是注册状态
+	var isEdit = shopId?true:false;
 	var initUrl = '/jwExp/shopadmin/getshopinitinfo';
 	var registerShopUrl = '/jwExp/shopadmin/registershop';
-	getShopInitInfo();
+	
+	var shopInfoUrl = '/jwExp/shopadmin/getshopbyid?shopId='+shopId;
+	var editShopUrl = '/jwExp/shopadmin/modifyshop';
+	
+	//通过isEdit来判断是哪种情况的数据初始化
+	if(!isEdit){
+		getShopInitInfo();
+	}else{
+		getShopInfo(shopId);
+	}
+	
+	//如果是编辑商店的话，那么就返回以下的内容
+	function getShopInfo(shopId) {
+		$.getJSON(shopInfoUrl, function(data) {
+			if (data.success) {
+				var shop = data.shop;
+				$('#shop-name').val(shop.shopName);
+				$('#shop-addr').val(shop.shopAddr);
+				$('#shop-phone').val(shop.phone);
+				$('#shop-desc').val(shop.shopDesc);
+				var shopCategory = '<option data-id="'
+						+ shop.shopCategory.shopCategoryId + '" selected>'
+						+ shop.shopCategory.shopCategoryName + '</option>';
+				var tempAreaHtml = '';
+				data.areaList.map(function(item, index) {
+					tempAreaHtml += '<option data-id="' + item.areaId + '">'
+							+ item.areaName + '</option>';
+				});
+				$('#shop-category').html(shopCategory);
+				$('#shop-category').attr('disabled','disabled');
+				$('#area').html(tempAreaHtml);
+				$("#area option[data-id='"+shop.area.areaId+"']").attr("selected","selected");
+			}
+		});
+	}
+	
 	//获取区域信息和分类信息
 	function getShopInitInfo(){
 		//建立连接，获取返回的信息
@@ -28,7 +67,9 @@ $(function(){
 	//点击提交后提交内容信息
 	$('#submit').click(function(){
 		var shop = {};
-
+		if(isEdit){
+			shop.shopId = shopId;
+		}
 		//获取表单中的信息
 		shop.shopName = $('#shop-name').val();
 		shop.shopAddr = $('#shop-addr').val();
@@ -62,7 +103,8 @@ $(function(){
 		}
 		formData.append("verifyCodeActual", verifyCodeActual);
 		$.ajax({
-			url : registerShopUrl,
+			//通过编辑状态来决定提交哪个页面
+			url : (isEdit?editShopUrl:registerShopUrl),
 			type : 'POST',
 			// contentType: "application/x-www-form-urlencoded; charset=utf-8",
 			data : formData,
