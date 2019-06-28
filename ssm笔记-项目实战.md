@@ -2680,4 +2680,50 @@ public class ShopCategoryDaoTest extends BaseTest{
    	}
    ```
 
-   
+### 批量添加店铺的前端实现
+
+1. 在原有的通过点击新增按钮来新增，这里的而原来的div换成了input来实现输入
+
+```javascript
+	// 点击new之后创建一个新行
+	$('#new')
+			.click(
+					function() {
+						var tempHtml = '<div class="row row-product-category temp">'
+								+ '<div class="col-33"><input class="category-input category" type="text" placeholder="分类名"></div>'
+								+ '<div class="col-33"><input class="category-input priority" type="number" placeholder="优先级"></div>'
+								+ '<div class="col-33"><a href="#" class="button delete">删除</a></div>'
+								+ '</div>';
+						$('.category-wrap').append(tempHtml);
+					});
+	// 点击提交数据
+	$('#submit').click(function() {
+		var tempArr = $('.temp');
+		var productCategoryList = [];
+		// 遍历数据
+		tempArr.map(function(index, item) {
+			var tempObj = {};
+			tempObj.productCategoryName = $(item).find('.category').val();
+			tempObj.priority = $(item).find('.priority').val();
+			// 如果权重和店铺名称有的话，才将这个数据放到list去
+			if (tempObj.productCategoryName && tempObj.priority) {
+				productCategoryList.push(tempObj);
+			}
+		});
+		$.ajax({
+			url : addUrl,
+			type : 'POST',
+			data : JSON.stringify(productCategoryList),
+			contentType : 'application/json',
+			success : function(data) {
+				if (data.success) {
+					$.toast('提交成功！');
+					getList();
+				} else {
+					$.toast('提交失败:'+data.errMsg);
+				}
+			}
+		});
+	});
+```
+

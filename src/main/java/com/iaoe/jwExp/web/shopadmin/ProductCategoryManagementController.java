@@ -1,5 +1,6 @@
 package com.iaoe.jwExp.web.shopadmin;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,6 +59,7 @@ public class ProductCategoryManagementController {
 		Shop currentShop = (Shop) request.getSession().getAttribute("currentShop");
 		for (ProductCategory pc : productCategoryList) {
 			pc.setShopId(currentShop.getShopId());
+			pc.setCreateTime(new Date());;
 		}
 		if (productCategoryList != null && productCategoryList.size() > 0) {
 			try {
