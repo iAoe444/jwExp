@@ -1934,4 +1934,160 @@ public class ShopCategoryDaoTest extends BaseTest{
 
    ![](https://ws1.sinaimg.cn/large/006bBmqIgy1g4gopvw3m4j30u90cq0u5.jpg)
 
+### 前端显示店铺列表功能
+
+1. 新增shoplist店铺列表`jwExp\src\main\webapp\WEB-INF\html\shop\shoplist.html`
+
+   ```html
+   <!DOCTYPE html>
+   <html>
+   <head>
+   <meta charset="utf-8">
+   <meta http-equiv="X-UA-Compatible" content="IE=edge">
+   <title>商店列表</title>
+   <meta name="viewport" content="initial-scale=1, maximum-scale=1">
+   <link rel="shortcut icon" href="/favicon.ico">
+   <meta name="apple-mobile-web-app-capable" content="yes">
+   <meta name="apple-mobile-web-app-status-bar-style" content="black">
+   <link rel="stylesheet"
+   	href="//g.alicdn.com/msui/sm/0.6.2/css/sm.min.css">
+   <link rel="stylesheet"
+   	href="//g.alicdn.com/msui/sm/0.6.2/css/sm-extend.min.css">
+   <link rel="stylesheet" href="../resources/css/shop/shoplist.css">
+   </head>
+   <body>
+   	<header class="bar bar-nav">
+   		<h1 class="title">商店列表</h1>
+   	</header>
+   	<div class="content">
+   		<div class="content-block">
+   			<p>
+   				你好,<span id="user-name"></span><a class="pull-right"
+   					href="/jwExp/shopadmin/shopoperation">增加店铺</a>
+   			</p>
+   			<div class="row row-shop">
+   				<div class="col-40">商店名称</div>
+   				<div class="col-40">状态</div>
+   				<div class="col-20">操作</div>
+   			</div>
+   			<!-- 这里是放店铺列表的位置 -->
+   			<div class="shop-wrap"></div>
+   		</div>
+   		<div class="content-block">
+   			<div class="row">
+   				<div class="col-50">
+   					<a href="" id="log-out"
+   						class="button button-big button-fill button-danger">退出系统</a>
+   				</div>
+   				<div class="col-50">
+   					<a href="/myo2o/shop/changepsw"
+   						class="button button-big button-fill button-success">修改密码</a>
+   				</div>
+   			</div>
+   		</div>
+   	</div>
+   
+   
+   
+   	<script type='text/javascript'
+   		src='//g.alicdn.com/sj/lib/zepto/zepto.min.js' charset='utf-8'></script>
+   	<script type='text/javascript'
+   		src='//g.alicdn.com/msui/sm/0.6.2/js/sm.min.js' charset='utf-8'></script>
+   	<script type='text/javascript'
+   		src='//g.alicdn.com/msui/sm/0.6.2/js/sm-extend.min.js' charset='utf-8'></script>
+   	<script type='text/javascript' src='../resources/js/shop/shoplist.js'
+   		charset='utf-8'></script>
+   </body>
+   </html>
+   ```
+
+2. 新增shoplist样式`jwExp\src\main\webapp\resources\css\shop\shoplist.css`
+
+   ```javascript
+   .row-shop {
+       border: 1px solid #999;
+       padding: .5rem;
+       border-bottom: none;
+   }
+   .row-shop:last-child {
+       border-bottom: 1px solid #999;
+   }
+   .shop-name {
+       white-space: nowrap;
+       overflow-x: scroll;
+   }
+   .shop-wrap a {
+   
+   }
+   ```
+
+3. 新增js文件`jwExp\src\main\webapp\resources\js\shop\shoplist.js`来渲染店铺列表信息以及用户名
+
+   ```javascript
+   $(function () {
+   
+   	function getlist(e) {
+   		$.ajax({
+   			url : "/jwExp/shopadmin/getshoplist",
+   			type : "get",
+   			dataType : "json",
+   			success : function(data) {
+   				if (data.success) {
+   					//渲染shoplist
+   					handleList(data.shopList);
+   					//渲染用户名
+   					handleUser(data.user);
+   				}
+   			}
+   		});
+   	}
+   
+   	function handleUser(data) {
+   		$('#user-name').text(data.name);
+   	}
+   
+   	function handleList(data) {
+   		var html = '';
+   		//遍历list信息
+   		data.map(function (item, index) {
+   			html += '<div class="row row-shop"><div class="col-40">'+ item.shopName +'</div><div class="col-40">'+ shopStatus(item.enableStatus) +'</div><div class="col-20">'+ goShop(item.enableStatus, item.shopId) +'</div></div>';
+   
+   		});
+   		$('.shop-wrap').html(html);
+   	}
+   
+   	function goShop(status, id) {
+   		if (status != 0 && status != -1) {
+   			return '<a href="/暂定'+ id +'">进入</a>';
+   		} else {
+   			return '';
+   		}
+   	}
+   
+   	//获取店铺的状态
+   	function shopStatus(status) {
+   		if (status == 0) {
+   			return '审核中';
+   		} else if (status == -1) {
+   			return '店铺非法';
+   		} else {
+   			return '审核通过';
+   		}
+   	}
+   
+   	getlist();
+   });
+   ```
+
+4. 在`ShopAdminController`设置路由到达shoplist.html
+
+   ```java
+   	@RequestMapping(value="/shoplist")
+   	public String shopList() {
+   		return "shop/shoplist";
+   	}
+   ```
+
+   ![](https://ws1.sinaimg.cn/large/006bBmqIgy1g4gpg7vqjuj30ca0nf74y.jpg)
+
    
