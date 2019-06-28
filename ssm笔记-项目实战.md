@@ -1637,4 +1637,188 @@ public class ShopCategoryDaoTest extends BaseTest{
    }
    ```
 
+## 3. 店铺列表的实现
+
+### (多条件查询，模糊查询，分页查询) Dao层实现多条件查询
+
+1. 首先，这两个是我们需要在shopDao里面要实现的Dao层接口
+
+   ```java
+   	/**
+   	 * 分页查询数据，可输入的条件有：店铺名（模糊），店铺状态，店铺类别，区域Id，owner
+   	 * @param shopCondition
+   	 * @param rowIndex	从第几行开始取
+   	 * @param pageSize	返回的条数
+   	 * @return
+   	 */
+   	List<Shop> queryShopList(@Param("shopCondition") Shop shopCondition,
+   			@Param("rowIndex") int rowIndex, @Param("pageSize") int pageSize);
+   	/**
+   	 * 通过条件获取店铺的总数
+   	 * @param shopCondition
+   	 * @return
+   	 */
+   	int queryShopCount(@Param("shopCondition") Shop shopCondition);
+   ```
+
+   第一个`queryShopList`是将传入shop，按照shop的条件来查询，例如，shopName="店铺"，那么就模糊查询含name的结构个数，并按照rowIndex从第几行开始取（0为第一行），每页pageSize个结果，`queryShopIndex`也是按照shop的条件查询，不过返回的是结果的总数
+
+   这里要注意的是@Param是用于给mapper里面传入参数时候用的，两者要保持一致
+
+2. 接着，就是在shopDao.xml里面实现这两个接口，用到之前我们写的resultMap，值得注意的是，resultMap不管返回的结果是一个还是多个，都会自动转换列表还是单个类
+
+   ```xml
+   	<!-- 查询店铺列表 -->
+   	<select id="queryShopList" resultMap="shopMap">
+   		SELECT
+   		s.shop_id,
+   		s.shop_name,
+   		s.shop_desc,
+   		s.shop_addr,
+   		s.phone,
+   		s.shop_img,
+   		s.priority,
+   		s.create_time,
+   		s.last_edit_time,
+   		s.enable_status,
+   		s.advice,
+   		a.area_id,
+   		a.area_name,
+   		sc.shop_category_id,
+   		sc.shop_category_name
+   		FROM
+   		tb_shop s,
+   		tb_area a,
+   		tb_shop_category sc
+   		<where>
+   			<if
+   				test="shopCondition.shopCategory!=null
+   				 and shopCondition.shopCategory.shopCategoryId!=null">
+   				and s.shop_category_id =
+   				#{shopCondition.shopCategory.shopCategoryId}
+   			</if>
+   			<if
+   				test="shopCondition.area!=null
+   				 and shopCondition.area.areaId!=null">
+   				and s.area_id =
+   				#{shopCondition.area.areaId}
+   			</if>
+   			<!-- 这里使用的模糊查询，写like语句的时候 一般都会写成 like '% %' 在mybatis里面写就是应该是 like '%${name} 
+   				%' 而不是 '%#{name} %' ${name} 是不带单引号的，而#{name} 是带单引号的 -->
+   			<if test="shopCondition.shopName!=null">
+   				and s.shop_name like '%${shopCondition.shopName}%'
+   			</if>
+   			<if test="shopCondition.enableStatus!=null">
+   				and s.enable_status = #{shopCondition.enableStatus}
+   			</if>
+   			<if
+   				test="shopCondition.owner!=null
+   				 and shopCondition.owner.userId!=null">
+   				and s.owner_id =
+   				#{shopCondition.owner.userId}
+   			</if>
+   			AND
+   			s.area_id=a.area_id
+   			AND
+   			s.shop_category_id=sc.shop_category_id
+   		</where>
+   		ORDER BY
+   		s.priority DESC
+   		LIMIT #{rowIndex},#{pageSize};
+   	</select>
+   	<!-- 获取店铺总数 -->
+   	<select id="queryShopCount" resultType="int">
+   		SELECT
+   		count(1)
+   		FROM
+   		tb_shop s,
+   		tb_area a,
+   		tb_shop_category sc
+   		<where>
+   			<if
+   				test="shopCondition.shopCategory!=null
+   				 and shopCondition.shopCategory.shopCategoryId!=null">
+   				and s.shop_category_id =
+   				#{shopCondition.shopCategory.shopCategoryId}
+   			</if>
+   			<if
+   				test="shopCondition.area!=null
+   				 and shopCondition.area.areaId!=null">
+   				and s.area_id =
+   				#{shopCondition.area.areaId}
+   			</if>
+   			<!-- 这里使用的模糊查询，写like语句的时候 一般都会写成 like '% %' 在mybatis里面写就是应该是 like '%${name} 
+   				%' 而不是 '%#{name} %' ${name} 是不带单引号的，而#{name} 是带单引号的 -->
+   			<if test="shopCondition.shopName!=null">
+   				and s.shop_name like '%${shopCondition.shopName}%'
+   			</if>
+   			<if test="shopCondition.enableStatus!=null">
+   				and s.enable_status = #{shopCondition.enableStatus}
+   			</if>
+   			<if
+   				test="shopCondition.owner!=null
+   				 and shopCondition.owner.userId!=null">
+   				and s.owner_id =
+   				#{shopCondition.owner.userId}
+   			</if>
+   			AND
+   			s.area_id=a.area_id
+   			AND
+   			s.shop_category_id=sc.shop_category_id
+   		</where>
+   	</select>
+   ```
+
+3. 最后进行junit测试吧
+
+   ```java
+   @Test
+   	public void testQueryShopList() {
+   		Shop shopCondition = new Shop();
+   		
+   		System.out.println("ownerId=1");
+   		PersonInfo owner = new PersonInfo();
+   		owner.setUserId(1L);
+   		shopCondition.setOwner(owner);
+   		List<Shop> shopList = shopDao.queryShopList(shopCondition, 1, 10);
+   		int count = shopDao.queryShopCount(shopCondition);
+   		System.out.println("店铺列表的大小:"+shopList.size());
+   		System.out.println("店铺总数:"+count);
+   		
+   		System.out.println("ownerId=1,shopCategory=2L");
+   		ShopCategory sc = new ShopCategory();
+   		sc.setShopCategoryId(2L);
+   		shopCondition.setShopCategory(sc);
+   		shopList = shopDao.queryShopList(shopCondition, 0, 10);
+   		count = shopDao.queryShopCount(shopCondition);
+   		System.out.println("店铺列表的大小:"+shopList.size());
+   		System.out.println("店铺总数:"+count);
+   		
+   		System.out.println("ownerId=1,shopCategory=2L,shopName=店铺");
+   		shopCondition.setShopName("店铺");
+   		shopList = shopDao.queryShopList(shopCondition, 0, 10);
+   		count = shopDao.queryShopCount(shopCondition);
+   		System.out.println("店铺列表的大小:"+shopList.size());
+   		System.out.println("店铺总数:"+count);
+   		
+   		System.out.println("ownerId=1,shopCategory=2L,shopName=店铺,area_Id=1");
+   		Area area = new Area();
+   		area.setAreaId(1);
+   		shopCondition.setArea(area);;
+   		shopList = shopDao.queryShopList(shopCondition, 0, 10);
+   		count = shopDao.queryShopCount(shopCondition);
+   		System.out.println("店铺列表的大小:"+shopList.size());
+   		System.out.println("店铺总数:"+count);
+   		
+   		System.out.println("ownerId=1,shopCategory=2L,shopName=店铺,area_Id=1,enable_staus=1");
+   		shopCondition.setEnableStatus(1);
+   		shopList = shopDao.queryShopList(shopCondition, 0, 10);
+   		count = shopDao.queryShopCount(shopCondition);
+   		System.out.println("店铺列表的大小:"+shopList.size());
+   		System.out.println("店铺总数:"+count);
+   	}
+   ```
+
+   ![](https://ws1.sinaimg.cn/large/006bBmqIgy1g4gmvnewa4j31g30p0n08.jpg)
+
    

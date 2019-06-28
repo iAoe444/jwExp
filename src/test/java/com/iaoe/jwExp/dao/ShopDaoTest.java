@@ -3,6 +3,7 @@ package com.iaoe.jwExp.dao;
 import static org.junit.Assert.assertEquals;
 
 import java.util.Date;
+import java.util.List;
 
 import org.junit.Ignore;
 import org.junit.Test;
@@ -19,6 +20,53 @@ public class ShopDaoTest extends BaseTest{
 	private ShopDao shopDao;
 	
 	@Test
+	public void testQueryShopList() {
+		Shop shopCondition = new Shop();
+		
+		System.out.println("ownerId=1");
+		PersonInfo owner = new PersonInfo();
+		owner.setUserId(1L);
+		shopCondition.setOwner(owner);
+		List<Shop> shopList = shopDao.queryShopList(shopCondition, 1, 10);
+		int count = shopDao.queryShopCount(shopCondition);
+		System.out.println("店铺列表的大小:"+shopList.size());
+		System.out.println("店铺总数:"+count);
+		
+		System.out.println("ownerId=1,shopCategory=2L");
+		ShopCategory sc = new ShopCategory();
+		sc.setShopCategoryId(2L);
+		shopCondition.setShopCategory(sc);
+		shopList = shopDao.queryShopList(shopCondition, 0, 10);
+		count = shopDao.queryShopCount(shopCondition);
+		System.out.println("店铺列表的大小:"+shopList.size());
+		System.out.println("店铺总数:"+count);
+		
+		System.out.println("ownerId=1,shopCategory=2L,shopName=店铺");
+		shopCondition.setShopName("店铺");
+		shopList = shopDao.queryShopList(shopCondition, 0, 10);
+		count = shopDao.queryShopCount(shopCondition);
+		System.out.println("店铺列表的大小:"+shopList.size());
+		System.out.println("店铺总数:"+count);
+		
+		System.out.println("ownerId=1,shopCategory=2L,shopName=店铺,area_Id=1");
+		Area area = new Area();
+		area.setAreaId(1);
+		shopCondition.setArea(area);;
+		shopList = shopDao.queryShopList(shopCondition, 0, 10);
+		count = shopDao.queryShopCount(shopCondition);
+		System.out.println("店铺列表的大小:"+shopList.size());
+		System.out.println("店铺总数:"+count);
+		
+		System.out.println("ownerId=1,shopCategory=2L,shopName=店铺,area_Id=1,enable_staus=1");
+		shopCondition.setEnableStatus(1);
+		shopList = shopDao.queryShopList(shopCondition, 0, 10);
+		count = shopDao.queryShopCount(shopCondition);
+		System.out.println("店铺列表的大小:"+shopList.size());
+		System.out.println("店铺总数:"+count);
+	}
+	
+	@Test
+	@Ignore
 	public void testQueryByShopId(){
 		long shopId = 2;
 		Shop shop = shopDao.queryByShopId(shopId);
