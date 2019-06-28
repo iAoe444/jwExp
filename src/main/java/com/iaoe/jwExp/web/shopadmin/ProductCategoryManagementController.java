@@ -51,21 +51,22 @@ public class ProductCategoryManagementController {
 
 	@RequestMapping(value = "/addproductcategorys", method = RequestMethod.POST)
 	@ResponseBody
-	//@RequestBody可以直接从前端获取productCategoryList
+	// @RequestBody可以直接从前端获取productCategoryList
 	private Map<String, Object> addProductCategorys(@RequestBody List<ProductCategory> productCategoryList,
 			HttpServletRequest request) {
 		Map<String, Object> modelMap = new HashMap<String, Object>();
-		//通过session的方法可以尽量不依赖于前台数据
+		// 通过session的方法可以尽量不依赖于前台数据
 		Shop currentShop = (Shop) request.getSession().getAttribute("currentShop");
 		for (ProductCategory pc : productCategoryList) {
 			pc.setShopId(currentShop.getShopId());
-			pc.setCreateTime(new Date());;
+			pc.setCreateTime(new Date());
+			;
 		}
 		if (productCategoryList != null && productCategoryList.size() > 0) {
 			try {
-				//批量添加商品类别
+				// 批量添加商品类别
 				ProductCategoryExecution pe = productCategoryService.batchAddProductCategory(productCategoryList);
-				//如果成功
+				// 如果成功
 				if (pe.getState() == ProductCategoryStateEnum.SUCCESS.getState()) {
 					modelMap.put("success", true);
 				} else {
@@ -80,6 +81,42 @@ public class ProductCategoryManagementController {
 		} else {
 			modelMap.put("success", false);
 			modelMap.put("errMsg", "请至少输入一个商品类别");
+		}
+		return modelMap;
+	}
+	
+	@RequestMapping(value = "/removeproductcategory", method = RequestMethod.POST)
+	@ResponseBody
+	private Map<String, Object> removeProductCategory(Long productCategoryId,
+			HttpServletRequest request) {
+		Map<String, Object> modelMap = new HashMap<String, Object>();
+		//空值和合法值判断
+		if (productCategoryId != null && productCategoryId > 0) {
+			try {
+				//从session中获取currentShop
+				Shop currentShop = (Shop) request.getSession().getAttribute(
+						"currentShop");
+				//删除该分类
+				ProductCategoryExecution pe = productCategoryService
+						.deleteProductCategory(productCategoryId,
+								currentShop.getShopId());
+				//如果通过验证，则返回成功
+				if (pe.getState() == ProductCategoryStateEnum.SUCCESS
+						.getState()) {
+					modelMap.put("success", true);
+				} else {
+					modelMap.put("success", false);
+					modelMap.put("errMsg", pe.getStateInfo());
+				}
+			} catch (RuntimeException e) {
+				modelMap.put("success", false);
+				modelMap.put("errMsg", e.toString());
+				return modelMap;
+			}
+
+		} else {
+			modelMap.put("success", false);
+			modelMap.put("errMsg", "请至少选择一个商品类别");
 		}
 		return modelMap;
 	}

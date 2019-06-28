@@ -2,7 +2,7 @@ $(function() {
 	var shopId = 1;
 	var listUrl = '/jwExp/shopadmin/getproductcategorylist';
 	var addUrl = '/jwExp/shopadmin/addproductcategorys';
-
+	var deleteUrl = '/jwExp/shopadmin/removeproductcategory';
 	getList();
 	function getList() {
 		$
@@ -67,9 +67,40 @@ $(function() {
 					$.toast('提交成功！');
 					getList();
 				} else {
-					$.toast('提交失败:'+data.errMsg);
+					$.toast('提交失败:' + data.errMsg);
 				}
 			}
 		});
 	});
+	// 绑定已经存在的商品分类，达到删除的操作
+	$('.category-wrap').on('click', '.row-product-category.now .delete',
+			function(e) {
+				var target = e.currentTarget;
+				$.confirm('是否确定删除当前商品?', function() {
+					$.ajax({
+						url : deleteUrl,
+						type : 'POST',
+						data : {
+							productCategoryId : target.dataset.id,
+							shopId : shopId
+						},
+						dataType : 'json',
+						success : function(data) {
+							if (data.success) {
+								$.toast('删除成功！');
+								getList();
+							} else {
+								$.toast('删除失败！');
+							}
+						}
+					});
+				});
+			});
+	// 绑定用于添加的商品分类栏，达到删除的操作
+	$('.category-wrap').on('click', '.row-product-category.temp .delete',
+			function(e) {
+				console.log($(this).parent().parent());
+				// 直接删除该行的parent().parent()即可删除
+				$(this).parent().parent().remove();
+			});
 });

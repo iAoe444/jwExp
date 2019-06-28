@@ -2727,3 +2727,184 @@ public class ShopCategoryDaoTest extends BaseTest{
 	});
 ```
 
+### (junit技巧) junit测试中的执行顺序问题
+
+> junit测试里面每个函数的执行顺序在没有指定的情况下是乱序的，这样可能就不满足我们的要求，我们可以在类名上添加
+
+```java
+@FixMethodOrder(MethodSorters.NAME_ASCENDING)
+```
+
+![](https://ws1.sinaimg.cn/large/006bBmqIgy1g4h3myagsuj30h209qwey.jpg)
+
+这样在会按照方法名来执行顺序，依次是`testABatchInsertProductCategory`->`testBQueryByShopId`
+
+>  `ut回环`: ut回环是指在多个方法中的ut测试中，所有方法总的产生的效果对数据库没有任何影响，这个算是最理想的测试
+
+### (删) 删除店铺分类的操作
+
+1. Dao层实现店铺分类删除功能`ProductCategoryDao`
+
+   ```java
+   	/**
+   	 * 删除指定的商品类别，传入两个是为了更加安全的删除
+   	 * 
+   	 * @param productCategoryId
+   	 * @param shopId
+   	 * @return effectedNum
+   	 */
+   	int deleteProductCategory(@Param("productCategoryId") long productCategoryId, @Param("shopId") long shopId);
+   ```
+
+2. **（删）**mapper实现店铺删除功能`ProductCategoryDao`
+
+   ```xml
+   	<delete id="deleteProductCategory">
+   		<!-- 具体的sql -->
+   		DELETE FROM
+   		tb_product_category
+   		WHERE
+   		product_category_id =
+   		#{productCategoryId}
+   		AND shop_id=#{shopId}
+   	</delete>
+   ```
+
+3. 使用junit进行测试`ProductCategoryDaoTest`
+
+   ```java
+   	@Test
+   	public void testCDeleteProductCategory() throws Exception {
+   		long shopId = 2;
+   		List<ProductCategory> productCategoryList = productCategoryDao
+   				.queryByShopId(shopId);
+   		int effectedNum = productCategoryDao.deleteProductCategory(
+   				productCategoryList.get(0).getProductCategoryId(), shopId);
+   		assertEquals(1, effectedNum);
+   		effectedNum = productCategoryDao.deleteProductCategory(
+   				productCategoryList.get(1).getProductCategoryId(), shopId);
+   		assertEquals(1, effectedNum);
+   	}
+   ```
+
+4. Service层实现删除店铺分类功能`ProductCategoryService`
+
+   ```java
+   	/**
+   	 * 删除商品分类
+   	 * 将此类别下的商品里的类别id置为空，再删除掉该商品类别
+   	 * @param productCategoryId
+   	 * @param shopId
+   	 * @return
+   	 * @throws RuntimeException
+   	 */
+   	ProductCategoryExecution deleteProductCategory(long productCategoryId,
+   			long shopId) throws ProductCategoryOperationException;
+   ```
+
+   `ProductCategoryServiceImpl`
+
+   这里还需要将与该商品类别相关联的商品删掉，以免删除异常，这个之后再实现
+
+   ```java
+   	@Override
+   	@Transactional
+   	public ProductCategoryExecution deleteProductCategory(long productCategoryId, long shopId)
+   			throws ProductCategoryOperationException {
+   		// TODO 将此商品类别下的商品的类别Id置为空
+   		try {
+   			int effectedNum = productCategoryDao.deleteProductCategory(productCategoryId, shopId);
+   			if(effectedNum <=0 ) {
+   				throw new ProductCategoryOperationException("商品类别删除失败");
+   			}else {
+   				return new ProductCategoryExecution(ProductCategoryStateEnum.SUCCESS);
+   			}
+   		}catch(Exception e) {
+   			throw new ProductCategoryOperationException("deleteProutCategory error:"+e.getMessage());
+   		}
+   	}
+   ```
+
+5. controller层实现删除商品分类功能`ProductCategoryManagementController.java`
+
+   ```java
+   	@RequestMapping(value = "/removeproductcategory", method = RequestMethod.POST)
+   	@ResponseBody
+   	private Map<String, Object> removeProductCategory(Long productCategoryId,
+   			HttpServletRequest request) {
+   		Map<String, Object> modelMap = new HashMap<String, Object>();
+   		//空值和合法值判断
+   		if (productCategoryId != null && productCategoryId > 0) {
+   			try {
+   				//从session中获取currentShop
+   				Shop currentShop = (Shop) request.getSession().getAttribute(
+   						"currentShop");
+   				//删除该分类
+   				ProductCategoryExecution pe = productCategoryService
+   						.deleteProductCategory(productCategoryId,
+   								currentShop.getShopId());
+   				//如果通过验证，则返回成功
+   				if (pe.getState() == ProductCategoryStateEnum.SUCCESS
+   						.getState()) {
+   					modelMap.put("success", true);
+   				} else {
+   					modelMap.put("success", false);
+   					modelMap.put("errMsg", pe.getStateInfo());
+   				}
+   			} catch (RuntimeException e) {
+   				modelMap.put("success", false);
+   				modelMap.put("errMsg", e.toString());
+   				return modelMap;
+   			}
+   
+   		} else {
+   			modelMap.put("success", false);
+   			modelMap.put("errMsg", "请至少选择一个商品类别");
+   		}
+   		return modelMap;
+   	}
+   ```
+
+6. js实现删除商品功能`productcategorymanagement.js`
+
+   ```javascript
+   var deleteUrl = '/jwExp/shopadmin/removeproductcategory';
+   
+   
+   // 绑定已经存在的商品分类，达到删除的操作
+   	$('.category-wrap').on('click', '.row-product-category.now .delete',
+   			function(e) {
+   				var target = e.currentTarget;
+   				$.confirm('是否确定删除当前商品?', function() {
+   					$.ajax({
+   						url : deleteUrl,
+   						type : 'POST',
+   						data : {
+   							productCategoryId : target.dataset.id,
+   							shopId : shopId
+   						},
+   						dataType : 'json',
+   						success : function(data) {
+   							if (data.success) {
+   								$.toast('删除成功！');
+   								getList();
+   							} else {
+   								$.toast('删除失败！');
+   							}
+   						}
+   					});
+   				});
+   			});
+   	// 绑定用于添加的商品分类栏，达到删除的操作
+   	$('.category-wrap').on('click', '.row-product-category.temp .delete',
+   			function(e) {
+   				console.log($(this).parent().parent());
+   				// 直接删除该行的parent().parent()即可删除
+   				$(this).parent().parent().remove();
+   			});
+   });
+   ```
+
+   这里由于有两类要删除的商品栏，一种是已经存在的商品分类，一种是用于新增的商品分类，两者的删除策略有所不同
+
+   ![](https://ws1.sinaimg.cn/large/006bBmqIgy1g4h4vqaywyj30es09nwei.jpg)
