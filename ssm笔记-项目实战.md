@@ -2228,4 +2228,264 @@ public class ShopCategoryDaoTest extends BaseTest{
    });
    ```
 
+## 4. 商品分类列表功能的实现
+
+> 这里主要完成商品类别的查找，商品类别的新增以及商品类别的删除功能，这里由于有了之前的基础，我就大致把代码讲解以下
+
+### 查询店铺分类列表功能的前后端实现
+
+1. dao层`ProductCategoryDao`
+
+   ```java
+   package com.iaoe.jwExp.dao;
+   
+   import java.util.List;
+   
+   import org.apache.ibatis.annotations.Param;
+   
+   import com.iaoe.jwExp.entity.ProductCategory;
+   
+   public interface ProductCategoryDao {
+   	/**
+   	 * 通过shopId 查询店铺的商品类别
+   	 * 
+   	 * @param long shopId
+   	 * @return List<ProductCategory>
+   	 */
+   	List<ProductCategory> queryByShopId(long shopId);
+   }
+   ```
+
+2. mapper层`ProductCategoryDao`
+
+   ```xml
+   <?xml version="1.0" encoding="UTF-8"?>
+   <!DOCTYPE mapper
+       PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+       "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+   <mapper namespace="com.iaoe.jwExp.dao.ProductCategoryDao">
+   	<!-- 目的：为dao接口方法提供sql语句配置 -->
+   	<select id="queryByShopId" resultType="com.iaoe.jwExp.entity.ProductCategory"
+   		parameterType="Long">
+   		<!-- 具体的sql -->
+   		SELECT
+   		product_category_id,
+   		product_category_name,
+   		priority,
+   		create_time,
+   		shop_id
+   		FROM
+   		tb_product_category
+   		WHERE
+   		shop_id = #{shopId}
+   		ORDER BY
+   		priority DESC
+   	</select>
+   
+   </mapper>
+   ```
+
+3. junit测试`ProductCategoryDaoTest`
+
+   ```java
+   package com.iaoe.jwExp.dao;
+   
+   import java.util.List;
+   
+   import org.junit.Test;
+   import org.springframework.beans.factory.annotation.Autowired;
+   
+   import com.iaoe.jwExp.BaseTest;
+   import com.iaoe.jwExp.entity.ProductCategory;
+   
+   public class ProductCategoryDaoTest extends BaseTest{
+   	@Autowired
+   	private ProductCategoryDao productCategoryDao;
+   	
+   	@Test
+   	public void testQueryByShopId() {
+   		long shopId = 2;
+   		List<ProductCategory> pc = productCategoryDao.queryByShopId(shopId);
+   		System.err.println("店铺为的商品类别的数量"+pc.size());
+   	}
+   }
+   ```
+
+4. service层`ProductCategoryService`以及其实现`ProductCategoryServiceImpl`
+
+   ```java
+   package com.iaoe.jwExp.service;
+   
+   import java.util.List;
+   
+   import com.iaoe.jwExp.entity.ProductCategory;
+   
+   public interface ProductCategoryService {
+   	/**
+   	 * 通过shopId查询店铺下的所有商品类别信息
+   	 * @param shopId
+   	 * @return
+   	 */
+   	List<ProductCategory> getProductCategoryList(long shopId);
+   }
+   ```
+
+   ```java
+   package com.iaoe.jwExp.service.impl;
+   
+   import java.util.List;
+   
+   import org.springframework.beans.factory.annotation.Autowired;
+   import org.springframework.stereotype.Service;
+   
+   import com.iaoe.jwExp.dao.ProductCategoryDao;
+   import com.iaoe.jwExp.entity.ProductCategory;
+   import com.iaoe.jwExp.service.ProductCategoryService;
+   
+   @Service
+   public class ProductCategoryServiceImpl implements ProductCategoryService{
+   	@Autowired
+   	private ProductCategoryDao productCategoryDao;
+   
+   	@Override
+   	public List<ProductCategory> getProductCategoryList(long shopId) {
+   		return productCategoryDao.queryByShopId(shopId);
+   	}
+   }
+   ```
+
+5. Controller层`ProductCategoryManagementController`
+
+   ```java
+   package com.iaoe.jwExp.web.shopadmin;
+   
+   import java.util.List;
+   
+   import javax.servlet.http.HttpServletRequest;
+   
+   import org.springframework.beans.factory.annotation.Autowired;
+   import org.springframework.stereotype.Controller;
+   import org.springframework.web.bind.annotation.RequestMapping;
+   import org.springframework.web.bind.annotation.RequestMethod;
+   import org.springframework.web.bind.annotation.ResponseBody;
+   
+   import com.iaoe.jwExp.dto.Result;
+   import com.iaoe.jwExp.entity.ProductCategory;
+   import com.iaoe.jwExp.entity.Shop;
+   import com.iaoe.jwExp.enums.ProductCategoryStateEnum;
+   import com.iaoe.jwExp.service.ProductCategoryService;
+   
+   @Controller
+   @RequestMapping("/shopadmin")
+   public class ProductCategoryManagementController {
+   	@Autowired
+   	private ProductCategoryService productCategoryService;
+   	
+   	@RequestMapping(value="/getproductcategorylist",method = RequestMethod.GET)
+   	@ResponseBody
+   	//Result为dto层的内容，用于保存状态
+   	private Result<List<ProductCategory>> getProductCategoryList(HttpServletRequest request){
+   		//获取session里面的currentShop
+   		Shop currentShop = (Shop) request.getSession().getAttribute("currentShop");
+   		List<ProductCategory> list = null;
+   		//如果存在currentShop且其保存的shopId大于0
+   		if(currentShop!=null&&currentShop.getShopId()>0) {
+   			//查询商店下的商品分类
+   			list = productCategoryService.getProductCategoryList(currentShop.getShopId());
+   			//返回成功的构造器
+   			return new Result<List<ProductCategory>>(true,list);
+   		}else {
+   			//ps为ProductCategoryStateEnum的错误枚举
+   			ProductCategoryStateEnum ps = ProductCategoryStateEnum.INNER_ERROR;
+   			//返回错误的构造器
+   			return new Result<List<ProductCategory>>(false,ps.getState(),ps.getStateInfo());
+   		}
+   	}
+   }
+   ```
+
+   其中这里面用到了两个类，一个是dto层的范型`Result`如下：
+
+   ```java
+   package com.iaoe.jwExp.dto;
+   
+   /**
+    * 封装json对象，所有返回结果都使用它
+    */
+   public class Result<T> {
+   
+   	private boolean success;// 是否成功标志
+   
+   	private T data;// 成功时返回的数据
+   
+   	private String errorMsg;// 错误信息
+   
+   	private int errorCode;
+   
+   	public Result() {
+   	}
+   
+   	// 成功时的构造器
+   	public Result(boolean success, T data) {
+   		this.success = success;
+   		this.data = data;
+   	}
+   
+   	// 错误时的构造器
+   	public Result(boolean success, int errorCode, String errorMsg) {
+   		this.success = success;
+   		this.errorMsg = errorMsg;
+   		this.errorCode = errorCode;
+   	}
+       
+       //.........getter和setter方法省略............
+   }
+   
+   ```
+
+   和enums层的`ProductCategoryStateEnum`
+
+   ```java
+   package com.iaoe.jwExp.enums;
+   
+   public enum ProductCategoryStateEnum {
+   	SUCCESS(1, "创建成功"), INNER_ERROR(-1001, "操作失败"), EMPTY_LIST(-1002, "添加数少于1");
+   
+   	private int state;
+   
+   	private String stateInfo;
+   
+   	private ProductCategoryStateEnum(int state, String stateInfo) {
+   		this.state = state;
+   		this.stateInfo = stateInfo;
+   	}
+   
+   	public int getState() {
+   		return state;
+   	}
+   
+   	public String getStateInfo() {
+   		return stateInfo;
+   	}
+   
+   	public static ProductCategoryStateEnum stateOf(int index) {
+   		for (ProductCategoryStateEnum state : values()) {
+   			if (state.getState() == index) {
+   				return state;
+   			}
+   		}
+   		return null;
+   	}
+   
+   }
+   ```
+
+6. 实现前端页面的显示，这里代码具体见Git或者实际工程上的`productcategorymanagement`的js和css，内容有点多我就不贴上来了
+
+   ![](https://ws1.sinaimg.cn/large/006bBmqIgy1g4gxbgfxg4j314q0qggn4.jpg)
+
+   
+
+   
+
    
