@@ -38,8 +38,11 @@ $(function(){
 				});
 				$('#shop-category').html(shopCategory);
 				$('#shop-category').attr('disabled','disabled');
+				$('#return').attr('href','/jwExp/shopadmin/shopmanagement');
 				$('#area').html(tempAreaHtml);
 				$("#area option[data-id='"+shop.area.areaId+"']").attr("selected","selected");
+				$('#title').html('编辑店铺');
+				document.title="编辑店铺";
 			}
 		});
 	}
@@ -61,6 +64,9 @@ $(function(){
 				});
 				$('#shop-category').html(tempHtml);
 				$('#area').html(tempAreaHtml);
+				$('#return').attr('href','/jwExp/shopadmin/shoplist');
+				$('#title').html('注册店铺');
+				document.title="注册店铺";
 			}
 		});
 	}

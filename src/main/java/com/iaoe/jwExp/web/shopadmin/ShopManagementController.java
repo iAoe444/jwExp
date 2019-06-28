@@ -57,7 +57,7 @@ public class ShopManagementController {
 			if(currentShopObj==null) {
 				//如果当前的没有session表示当前的shopId，那么就重定向
 				modelMap.put("redirect",true);
-				modelMap.put("url", "/jwExp/shopadmin/getshoplist");
+				modelMap.put("url", "/jwExp/shopadmin/shoplist");
 			}else {
 				Shop currentShop = (Shop) currentShopObj;
 				modelMap.put("redirect",false);
