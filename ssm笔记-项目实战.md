@@ -2484,8 +2484,200 @@ public class ShopCategoryDaoTest extends BaseTest{
 
    ![](https://ws1.sinaimg.cn/large/006bBmqIgy1g4gxbgfxg4j314q0qggn4.jpg)
 
-   
+### （批量添加）批量添加店铺列表功能后端实现
 
+1. `ProductCategoryDao`层写入接口
+
+   ```java
+   	/**
+   	 * 批量添加新增商品类别
+   	 * 
+   	 * @param ProductCategory
+   	 *            productCategory
+   	 * @return effectedNum
+   	 */
+   	int batchInsertProductCategory(List<ProductCategory> productCategoryList);
+   ```
+
+2. **（批量添加）**mapper`ProductCategoryDao`写入语句
+
+   ```xml
+   	<insert id="batchInsertProductCategory"
+   		parameterType="java.util.List">
+   		INSERT INTO
+   		tb_product_category(product_category_name,priority,
+   		create_time,shop_id)
+   		VALUES
+   		<!-- 遍历添加，传入的是collection，item是productCategory，index是计数器，separator是",",代表values(xxx),(xxx) -->
+   		<foreach collection="list" item="productCategory"
+   			index="index" separator=",">
+   			(
+   			#{productCategory.productCategoryName},
+   			#{productCategory.priority},
+   			#{productCategory.createTime},
+   			#{productCategory.shopId}
+   			)
+   		</foreach>
+   	</insert>
+   ```
+
+3. Junit测试`ProductCategoryDaoTest`
+
+   ```java
+   	@Test
+   	public void testBatchInsertProductCategory() {
+   		ProductCategory productCategory = new ProductCategory();
+   		productCategory.setProductCategoryName("商品类别1");
+   		productCategory.setPriority(1);
+   		productCategory.setCreateTime(new Date());
+   		productCategory.setShopId(2L);
+   		ProductCategory productCategory2 = new ProductCategory();
+   		productCategory2.setProductCategoryName("商品类别2");
+   		productCategory2.setPriority(2);
+   		productCategory2.setCreateTime(new Date());
+   		productCategory2.setShopId(2L);
+   		List<ProductCategory> productCategoryList = new ArrayList<ProductCategory>();
+   		productCategoryList.add(productCategory);
+   		productCategoryList.add(productCategory2);
+   		int effectedNum = productCategoryDao
+   				.batchInsertProductCategory(productCategoryList);
+   		assertEquals(2, effectedNum);
+   	}
+   ```
+
+4. Service层实现批量添加功能`ProductCategoryService`
+
+   ```java
+   	/**
+   	 * 批量添加商品分类
+   	 * @param productCategoryList
+   	 * @return
+   	 * @throws ProductCategoryOperationException
+   	 */
+   	ProductCategoryExecution batchAddProductCategory(List<ProductCategory> productCategoryList)
+   			throws ProductCategoryOperationException;
+   ```
+
+   `ProductCategoryServiceImpl`
+
+   ```java
+   	@Override
+   	@Transactional
+   	public ProductCategoryExecution batchAddProductCategory(
+   			List<ProductCategory> productCategoryList) throws RuntimeException {
+   		//空值判断
+   		if (productCategoryList != null && productCategoryList.size() > 0) {
+   			try {
+   				int effectedNum = productCategoryDao
+   						.batchInsertProductCategory(productCategoryList);
+   				if (effectedNum <= 0) {
+   					throw new RuntimeException("店铺类别创建失败");
+   				} else {
+   					return new ProductCategoryExecution(
+   							ProductCategoryStateEnum.SUCCESS);
+   				}
+   			} catch (Exception e) {
+   				throw new ProductCategoryOperationException("batchAddProductCategory error: "
+   						+ e.getMessage());
+   			}
+   		} else {
+   			return new ProductCategoryExecution(
+   					ProductCategoryStateEnum.EMPTY_LIST);
+   		}
+   	}
+   ```
+
+   其中`ProductCategoryExecution`是dto层的内容
+
+   ```java
+   package com.iaoe.jwExp.dto;
    
+   import java.util.List;
+   
+   import com.iaoe.jwExp.entity.ProductCategory;
+   import com.iaoe.jwExp.enums.ProductCategoryStateEnum;
+   
+   //这个和shopExectution差不多
+   public class ProductCategoryExecution {
+   	// 结果状态
+   	private int state;
+   	// 状态标识
+   	private String stateInfo;
+   
+   	// 操作的商铺类别
+   	private List<ProductCategory> productCategoryList;
+   
+   	public ProductCategoryExecution() {
+   	}
+   
+   	// 操作失败的构造器
+   	public ProductCategoryExecution(ProductCategoryStateEnum stateEnum) {
+   		this.state = stateEnum.getState();
+   		this.stateInfo = stateEnum.getStateInfo();
+   	}
+   
+   	// 操作成功的构造器
+   	public ProductCategoryExecution(ProductCategoryStateEnum stateEnum, List<ProductCategory> productCategoryList) {
+   		this.state = stateEnum.getState();
+   		this.stateInfo = stateEnum.getStateInfo();
+   		this.productCategoryList = productCategoryList;
+   	}
+        //.........getter和setter方法省略............
+   }
+   
+   ```
+
+   而`ProductCategoryOperationException`是exception层的内容，和之前的`shopOperationException`差不多，主要是为了代码方便的阅读
+
+   ```java
+   package com.iaoe.jwExp.exceptions;
+   
+   public class ProductCategoryOperationException extends RuntimeException{
+   
+   	private static final long serialVersionUID = 9063578131550582166L;
+   
+   	public ProductCategoryOperationException(String msg) {
+   		super(msg);
+   	}
+   }
+   ```
+
+5. 实现controller层`ProductCategoryManagementController`
+
+   ```java
+   	@RequestMapping(value = "/addproductcategorys", method = RequestMethod.POST)
+   	@ResponseBody
+   	//@RequestBody可以直接从前端获取productCategoryList
+   	private Map<String, Object> addProductCategorys(@RequestBody List<ProductCategory> productCategoryList,
+   			HttpServletRequest request) {
+   		Map<String, Object> modelMap = new HashMap<String, Object>();
+   		//通过session的方法可以不依赖于前台数据
+   		Shop currentShop = (Shop) request.getSession().getAttribute("currentShop");
+   		for (ProductCategory pc : productCategoryList) {
+   			pc.setShopId(currentShop.getShopId());
+   		}
+   		if (productCategoryList != null && productCategoryList.size() > 0) {
+   			try {
+   				//批量添加商品类别
+   				ProductCategoryExecution pe = productCategoryService.batchAddProductCategory(productCategoryList);
+   				//如果成功
+   				if (pe.getState() == ProductCategoryStateEnum.SUCCESS.getState()) {
+   					modelMap.put("success", true);
+   				} else {
+   					modelMap.put("success", false);
+   					modelMap.put("errMsg", pe.getStateInfo());
+   				}
+   			} catch (ProductCategoryOperationException e) {
+   				modelMap.put("success", false);
+   				modelMap.put("errMsg", e.toString());
+   				return modelMap;
+   			}
+   		} else {
+   			modelMap.put("success", false);
+   			modelMap.put("errMsg", "请至少输入一个商品类别");
+   		}
+   		return modelMap;
+   	}
+   ```
 
    

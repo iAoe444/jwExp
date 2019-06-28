@@ -2,8 +2,6 @@ package com.iaoe.jwExp.dao;
 
 import java.util.List;
 
-import org.apache.ibatis.annotations.Param;
-
 import com.iaoe.jwExp.entity.ProductCategory;
 
 public interface ProductCategoryDao {
@@ -14,4 +12,13 @@ public interface ProductCategoryDao {
 	 * @return List<ProductCategory>
 	 */
 	List<ProductCategory> queryByShopId(long shopId);
+	
+	/**
+	 * 批量添加新增商品类别
+	 * 
+	 * @param ProductCategory
+	 *            productCategory
+	 * @return effectedNum
+	 */
+	int batchInsertProductCategory(List<ProductCategory> productCategoryList);
 }
