@@ -1,5 +1,6 @@
 package com.iaoe.jwExp.service.impl;
 
+import java.util.List;
 import java.io.InputStream;
 import java.util.Date;
 
@@ -14,6 +15,7 @@ import com.iaoe.jwExp.enums.ShopStateEnum;
 import com.iaoe.jwExp.exceptions.ShopOperationException;
 import com.iaoe.jwExp.service.ShopService;
 import com.iaoe.jwExp.util.ImageUtil;
+import com.iaoe.jwExp.util.PageCalculator;
 import com.iaoe.jwExp.util.PathUtil;
 
 @Service
@@ -106,5 +108,24 @@ public class ShopServiceImpl implements ShopService {
 				throw new ShopOperationException("modifyShp error:" + e.getMessage());
 			}
 		}
+	}
+
+	@Override
+	public ShopExecution getShopList(Shop shopCondition, int pageIndex, int pageSize) {
+		//转换页数和页内结构大小为行数
+		int rowIndex = PageCalculator.calculateRowIndex(pageIndex, pageSize);
+		//Dao层查询结构列表和总数
+		List<Shop> shopList = shopDao.queryShopList(shopCondition, rowIndex, pageSize);
+		int count = shopDao.queryShopCount(shopCondition);
+		//将总数置入和店铺列表注入到里面
+		ShopExecution se = new ShopExecution();
+		if(shopList!=null) {
+			se.setShopList(shopList);
+			se.setCount(count);
+		}
+		else {
+			se.setState(ShopStateEnum.INNER_ERROR.getState());
+		}
+		return se;
 	}
 }

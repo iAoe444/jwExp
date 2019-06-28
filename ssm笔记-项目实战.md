@@ -1821,4 +1821,78 @@ public class ShopCategoryDaoTest extends BaseTest{
 
    ![](https://ws1.sinaimg.cn/large/006bBmqIgy1g4gmvnewa4j31g30p0n08.jpg)
 
+### Service层实现店铺列表功能
+
+> 这里需要注意的是，由于dao层使用的是rowIndex，而实际应用中是页码和页面数量的结合，所以我们需要先书写一个工具类来实现这个功能，而我们之前的ShopExecution里面就有店铺列表和店铺数量大小的数据，我们写一个函数然后之前dao层的两个查询函数的结果放进去就可以了
+
+1. 工具类`PageCalculator`，通过页码和页内数据条数，转换为rowIndex值，也就是从第几行开始的值
+
+   ```java
+   package com.iaoe.jwExp.util;
+   
+   public class PageCalculator {
+   	/**
+   	 * 通过页码和页内数据条数，转换为rowIndex值，也就是从第几行开始的值
+   	 * @param pageIndex
+   	 * @param pageSize
+   	 * @return
+   	 */
+   	public static int calculateRowIndex(int pageIndex,int pageSize) {
+   		return (pageIndex>0)?(pageIndex-1)*pageSize:0;
+   	}
+   }
+   ```
+
+2. service层`ShopService`接口写入我们的接口
+
+   ```java
+   	/**
+   	 * 根据shopCondition分页返回相应店铺列表
+   	 * @param shopCondition
+   	 * @param pageIndex
+   	 * @param pageSize
+   	 * @return
+   	 */
+   	public ShopExecution getShopList(Shop shopCondition,int pageIndex,int pageSize);
+   ```
+
+3. `shopServiceImpl`实现我们写的接口
+
+   ```java
+   	@Override
+   	public ShopExecution getShopList(Shop shopCondition, int pageIndex, int pageSize) {
+   		//转换页数和页内结构大小为行数
+   		int rowIndex = PageCalculator.calculateRowIndex(pageIndex, pageSize);
+   		//Dao层查询结构列表和总数
+   		List<Shop> shopList = shopDao.queryShopList(shopCondition, rowIndex, pageSize);
+   		int count = shopDao.queryShopCount(shopCondition);
+   		//将总数置入和店铺列表注入到里面
+   		ShopExecution se = new ShopExecution();
+   		if(shopList!=null) {
+   			se.setShopList(shopList);
+   			se.setCount(count);
+   		}
+   		else {
+   			se.setState(ShopStateEnum.INNER_ERROR.getState());
+   		}
+   		return se;
+   	}
+   ```
+
+4. 在`ShopServiceTest`使用junit进行测试
+
+   ```java
+    	@Test
+   	public void testGetShopList() {
+   		Shop shopCondition = new Shop();
+   		System.out.println("ownerId=1");
+   		PersonInfo owner = new PersonInfo();
+   		owner.setUserId(1L);
+   		shopCondition.setOwner(owner);
+   		ShopExecution se = shopService.getShopList(shopCondition, 1, 3);
+   		System.out.println("满足要求的店铺总大小:"+se.getCount());
+   		System.out.println("页面显示的店铺列表:"+se.getShopList().size());
+   	}
+   ```
+
    

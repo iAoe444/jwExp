@@ -7,6 +7,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.Date;
+import java.util.List;
 
 import org.junit.Ignore;
 import org.junit.Test;
@@ -26,6 +27,19 @@ public class ShopServiceTest extends BaseTest{
 	private ShopService shopService;
 	
 	@Test
+	public void testGetShopList() {
+		Shop shopCondition = new Shop();
+		System.out.println("ownerId=1");
+		PersonInfo owner = new PersonInfo();
+		owner.setUserId(1L);
+		shopCondition.setOwner(owner);
+		ShopExecution se = shopService.getShopList(shopCondition, 1, 3);
+		System.out.println("满足要求的店铺总大小:"+se.getCount());
+		System.out.println("页面显示的店铺列表:"+se.getShopList().size());
+	}
+	
+	@Test
+	@Ignore
 	public void testModifyShop() throws ShopOperationException,FileNotFoundException{
 		Shop shop = shopService.getByShopId(2L);
 		shop.setShopName("修改后的店铺名称");
