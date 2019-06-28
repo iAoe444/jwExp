@@ -3086,4 +3086,484 @@ public class ShopCategoryDaoTest extends BaseTest{
    }
    ```
 
+### Service层实现商品的的添加功能
+
+1. 由于我们之前分开传文件流和文件名这两个的方式太麻烦了，这里我们他们合并起来，形成一个新类，我们放在dto层`ImageHodler`
+
+   ```java
+   package com.iaoe.jwExp.dto;
+   
+   import java.io.InputStream;
+   
+   public class ImageHolder {
+   	
+   	private String imageName;
+   	private InputStream image;
+   	
+   	public ImageHolder(String imageName,InputStream image) {
+   		this.imageName = imageName;
+   		this.image = image;
+   	}
+   	
+   	public String getImageName() {
+   		return imageName;
+   	}
+   	public void setImageName(String imageName) {
+   		this.imageName = imageName;
+   	}
+   	public InputStream getImage() {
+   		return image;
+   	}
+   	public void setImage(InputStream image) {
+   		this.image = image;
+   	}
+       
+   }
+   ```
+
+   由于这里使用了ImageHolder，所以我们将之前的所有传文件流和文件名的方法都整改，具体可以看git
+
+2. 接着我们实现service层`productService`和`productServiceImpl`
+
+   ```java
+   package com.iaoe.jwExp.service;
+   
+   import java.util.List;
+   
+   import com.iaoe.jwExp.dto.ImageHolder;
+   import com.iaoe.jwExp.dto.ProductExecution;
+   import com.iaoe.jwExp.entity.Product;
+   import com.iaoe.jwExp.exceptions.ProductOperationException;
+   
+   public interface ProductService {
+   
+   	/**
+   	 * 添加商品和图片处理
+   	 * @param product
+   	 * @param thumbnail
+   	 * @param productImgList
+   	 * @return
+   	 * @throws ProductOperationException
+   	 */
+   	ProductExecution addProduct(Product product, ImageHolder thumbnail,
+   			List<ImageHolder> productImgList) throws ProductOperationException;
+   }
+   ```
+
+   ```java
+   package com.iaoe.jwExp.service.impl;
+   
+   import java.util.ArrayList;
+   import java.util.Date;
+   import java.util.List;
+   
+   import org.springframework.beans.factory.annotation.Autowired;
+   import org.springframework.transaction.annotation.Transactional;
+   
+   import com.iaoe.jwExp.dao.ProductDao;
+   import com.iaoe.jwExp.dao.ProductImgDao;
+   import com.iaoe.jwExp.dto.ImageHolder;
+   import com.iaoe.jwExp.dto.ProductExecution;
+   import com.iaoe.jwExp.entity.Product;
+   import com.iaoe.jwExp.entity.ProductImg;
+   import com.iaoe.jwExp.enums.ProductStateEnum;
+   import com.iaoe.jwExp.exceptions.ProductOperationException;
+   import com.iaoe.jwExp.service.ProductService;
+   import com.iaoe.jwExp.util.ImageUtil;
+   import com.iaoe.jwExp.util.PathUtil;
+   
+   public class ProductServiceImpl implements ProductService{
+   	@Autowired
+   	private ProductDao productDao;
+   	@Autowired
+   	private ProductImgDao productImgDao;	
+   	
+   	//1.处理缩略图，获取缩略图相对路径并赋值给product
+   	//2.往tb_product写入商品信息，获取productId
+   	//3.结合productId批量处理商品详情图
+   	//4.将商品详情图列表批量插入tb_product_img中
+   	@Override
+   	@Transactional
+   	public ProductExecution addProduct(Product product, ImageHolder thumbnail, List<ImageHolder> productImgList)
+   			throws ProductOperationException {
+   		//空值判断
+   		if (product != null && product.getShop() != null && product.getShop().getShopId() != null) {
+   			// 给商品设置上属性 
+   			product.setCreateTime(new Date());
+   			product.setLastEditTime(new Date());
+   			// 默认为上架的情况
+   			product.setEnableStatus(1);
+   			// 如果缩略图不为空
+   			if (thumbnail != null) {
+   				addThumbnail(product, thumbnail);
+   			}
+   			try {
+   				int effectedNum = productDao.insertProduct(product);
+   				if (effectedNum <= 0) {
+   					throw new RuntimeException("创建商品失败");
+   				}
+   			} catch (Exception e) {
+   				throw new RuntimeException("创建商品失败:" + e.toString());
+   			}
+   			if (productImgList != null && productImgList.size() > 0) {
+   				addProductImgs(product, productImgList);
+   			}
+   			return new ProductExecution(ProductStateEnum.SUCCESS, product);
+   		} else {
+   			//返回空值
+   			return new ProductExecution(ProductStateEnum.EMPTY);
+   		}
+   	}
+   	
+   	/**
+   	 * 添加缩略图
+   	 * @param product
+   	 * @param thumbnail
+   	 */
+   	private void addThumbnail(Product product, ImageHolder thumbnail) {
+   		String dest = PathUtil.getShopImagePath(product.getShop().getShopId());
+   		String thumbnailAddr = ImageUtil.generateThumbnail(thumbnail, dest);
+   		product.setImgAddr(thumbnailAddr);
+   	}
+   	
+   	/**
+   	 * 批量添加商品详情图
+   	 * @param product
+   	 * @param thumbnail
+   	 */
+   	private void addProductImgs(Product product,  List<ImageHolder> productImgHolderList) {
+   		String dest = PathUtil.getShopImagePath(product.getShop().getShopId());
+   		if (productImgHolderList != null && productImgHolderList.size() > 0) {
+   			//创建用于批量导入图片的productImgList
+   			List<ProductImg> productImgList = new ArrayList<ProductImg>();
+   			//遍历productImgHolderList给productImgList设值以及存在里面的图片
+   			for (ImageHolder productImgHodler : productImgHolderList) {
+   				String imgAddr = ImageUtil.generateNormalImg(productImgHodler, dest);
+   				ProductImg productImg = new ProductImg();
+   				productImg.setImgAddr(imgAddr);
+   				productImg.setProductId(product.getProductId());
+   				productImg.setCreateTime(new Date());
+   				productImgList.add(productImg);
+   			}
+   			try {
+   				int effectedNum = productImgDao.batchInsertProductImg(productImgList);
+   				if (effectedNum <= 0) {
+   					throw new ProductOperationException("创建商品详情图片失败");
+   				}
+   			} catch (Exception e) {
+   				throw new ProductOperationException("创建商品详情图片失败:" + e.toString());
+   			}
+   		}
+   	}
+   
+   }
+   ```
+
+3. 发现这里和之前的商店操作一样，我们新建了dto层的`ProductException`
+
+   ```java
+   package com.iaoe.jwExp.dto;
+   
+   import java.util.List;
+   
+   import com.iaoe.jwExp.entity.Product;
+   import com.iaoe.jwExp.enums.ProductStateEnum;
+   
+   public class ProductExecution {
+   	// 结果状态
+   	private int state;
+   
+   	// 状态标识
+   	private String stateInfo;
+   
+   	// 商品数量
+   	private int count;
+   
+   	// 操作的product（增删改商品的时候用）
+   	private Product product;
+   
+   	// 获取的product列表(查询商品列表的时候用)
+   	private List<Product> productList;
+   
+   	public ProductExecution() {
+   	}
+   
+   	// 失败的构造器
+   	public ProductExecution(ProductStateEnum stateEnum) {
+   		this.state = stateEnum.getState();
+   		this.stateInfo = stateEnum.getStateInfo();
+   	}
+   
+   	// 成功的构造器
+   	public ProductExecution(ProductStateEnum stateEnum, Product product) {
+   		this.state = stateEnum.getState();
+   		this.stateInfo = stateEnum.getStateInfo();
+   		this.product = product;
+   	}
+   
+   	// 成功的构造器
+   	public ProductExecution(ProductStateEnum stateEnum,
+   			List<Product> productList) {
+   		this.state = stateEnum.getState();
+   		this.stateInfo = stateEnum.getStateInfo();
+   		this.productList = productList;
+   	}
+   
+   	public int getState() {
+   		return state;
+   	}
+   
+   	public void setState(int state) {
+   		this.state = state;
+   	}
+   
+   	public String getStateInfo() {
+   		return stateInfo;
+   	}
+   
+   	public void setStateInfo(String stateInfo) {
+   		this.stateInfo = stateInfo;
+   	}
+   
+   	public int getCount() {
+   		return count;
+   	}
+   
+   	public void setCount(int count) {
+   		this.count = count;
+   	}
+   
+   	public Product getProduct() {
+   		return product;
+   	}
+   
+   	public void setProduct(Product product) {
+   		this.product = product;
+   	}
+   
+   	public List<Product> getProductList() {
+   		return productList;
+   	}
+   
+   	public void setProductList(List<Product> productList) {
+   		this.productList = productList;
+   	}
+   
+   }
+   ```
+
+   和enums层的ProductStateEnum
+
+   ```java
+   package com.iaoe.jwExp.enums;
+   
+   public enum ProductStateEnum {
+   	OFFLINE(-1, "非法商品"), SUCCESS(0, "操作成功"), PASS(2, "通过认证"), INNER_ERROR(
+   			-1001, "操作失败"),EMPTY(-1002, "商品为空");
+   
+   	private int state;
+   
+   	private String stateInfo;
+   
+   	private ProductStateEnum(int state, String stateInfo) {
+   		this.state = state;
+   		this.stateInfo = stateInfo;
+   	}
+   
+   	public int getState() {
+   		return state;
+   	}
+   
+   	public String getStateInfo() {
+   		return stateInfo;
+   	}
+   
+   	public static ProductStateEnum stateOf(int index) {
+   		for (ProductStateEnum state : values()) {
+   			if (state.getState() == index) {
+   				return state;
+   			}
+   		}
+   		return null;
+   	}
+   
+   }
+   ```
+
+   以及exception层的`productOperationException`
+
+   ```java
+   package com.iaoe.jwExp.exceptions;
+   
+   public class ProductOperationException extends RuntimeException{
+   
+   	private static final long serialVersionUID = -5415299518876597644L;
+   
+   	public ProductOperationException(String msg) {
+   		super(msg);
+   	}
+   }
+   ```
+
+### Controller层实现商品的添加
+
+1. 这里的controller略微有点繁琐，但是细看还是能看懂的，希望没出错
+
+   ```java
+   package com.iaoe.jwExp.web.shopadmin;
+   
+   import java.util.ArrayList;
+   import java.util.HashMap;
+   import java.util.List;
+   import java.util.Map;
+   
+   import javax.servlet.http.HttpServletRequest;
+   
+   import org.springframework.beans.factory.annotation.Autowired;
+   import org.springframework.stereotype.Controller;
+   import org.springframework.web.bind.annotation.RequestMapping;
+   import org.springframework.web.bind.annotation.RequestMethod;
+   import org.springframework.web.bind.annotation.ResponseBody;
+   import org.springframework.web.multipart.MultipartHttpServletRequest;
+   import org.springframework.web.multipart.commons.CommonsMultipartFile;
+   import org.springframework.web.multipart.commons.CommonsMultipartResolver;
+   
+   import com.fasterxml.jackson.databind.ObjectMapper;
+   import com.iaoe.jwExp.dto.ImageHolder;
+   import com.iaoe.jwExp.dto.ProductExecution;
+   import com.iaoe.jwExp.entity.Product;
+   import com.iaoe.jwExp.entity.Shop;
+   import com.iaoe.jwExp.enums.ProductStateEnum;
+   import com.iaoe.jwExp.exceptions.ProductOperationException;
+   import com.iaoe.jwExp.service.ProductService;
+   import com.iaoe.jwExp.util.CodeUtil;
+   import com.iaoe.jwExp.util.HttpServletRequestUtil;
+   
+   @Controller
+   @RequestMapping("/shopadmin")
+   public class ProductManagementController {
+   	@Autowired
+   	private ProductService productService;
+   	
+   	//商品详情图最大数量
+   	private static final int IMAGEMAXCOUNT = 6;
+   	
+   	//添加商品的操作
+   	@RequestMapping(value = "/addproduct", method = RequestMethod.POST)
+   	@ResponseBody
+   	private Map<String, Object> addProduct(HttpServletRequest request) {
+   		Map<String, Object> modelMap = new HashMap<String, Object>();
+   		if (!CodeUtil.checkVerifyCode(request)) {
+   			modelMap.put("success", false);
+   			modelMap.put("errMsg", "输入了错误的验证码");
+   			return modelMap;
+   		}
+   		//接收product的信息，商品信息，缩略图和详情图
+   		ObjectMapper mapper = new ObjectMapper();
+   		Product product = null;
+   		String productStr = HttpServletRequestUtil.getString(request,
+   				"productStr");
+   		MultipartHttpServletRequest multipartRequest = null;
+   		ImageHolder thumbnail = null;
+   		List<ImageHolder> productImgs = new ArrayList<ImageHolder>();
+   		CommonsMultipartResolver multipartResolver = new CommonsMultipartResolver(
+   				request.getSession().getServletContext());
+   		try {
+   			if (multipartResolver.isMultipart(request)) {
+   				multipartRequest = (MultipartHttpServletRequest) request;
+   				//取出缩略图
+   				CommonsMultipartFile thumbnailFile = (CommonsMultipartFile) multipartRequest
+   						.getFile("thumbnail");
+   				thumbnail = new ImageHolder(thumbnailFile.getOriginalFilename(), thumbnailFile.getInputStream());
+   				//取出最多6张缩略图
+   				for (int i = 0; i < IMAGEMAXCOUNT; i++) {
+   					CommonsMultipartFile productImgFile = (CommonsMultipartFile) multipartRequest
+   							.getFile("productImg" + i);
+   					if (productImgFile != null) {
+   						//如果img不为空那么加入详情图列表
+   						ImageHolder productImg = new ImageHolder(productImgFile.getOriginalFilename(), productImgFile.getInputStream());
+   						productImgs.add(productImg);
+   					}else {
+   						break;
+   					}
+   				}
+   			} else {
+   				modelMap.put("success", false);
+   				modelMap.put("errMsg", "上传图片不能为空");
+   				return modelMap;
+   			}
+   		} catch (Exception e) {
+   			modelMap.put("success", false);
+   			modelMap.put("errMsg", e.toString());
+   			return modelMap;
+   		}
+   		//获取商品的文字信息，将json转为product类
+   		try {
+   			product = mapper.readValue(productStr, Product.class);
+   		} catch (Exception e) {
+   			modelMap.put("success", false);
+   			modelMap.put("errMsg", e.toString());
+   			return modelMap;
+   		}
+   		if (product != null && thumbnail != null && productImgs.size() > 0) {
+   			try {
+   				Shop currentShop = (Shop) request.getSession().getAttribute(
+   						"currentShop");
+   				Shop shop = new Shop();
+   				shop.setShopId(currentShop.getShopId());
+   				product.setShop(shop);
+   				ProductExecution pe = productService.addProduct(product,
+   						thumbnail, productImgs);
+   				if (pe.getState() == ProductStateEnum.SUCCESS.getState()) {
+   					modelMap.put("success", true);
+   				} else {
+   					modelMap.put("success", false);
+   					modelMap.put("errMsg", pe.getStateInfo());
+   				}
+   			} catch (ProductOperationException e) {
+   				modelMap.put("success", false);
+   				modelMap.put("errMsg", e.toString());
+   				return modelMap;
+   			}
+   		} else {
+   			modelMap.put("success", false);
+   			modelMap.put("errMsg", "请输入商品信息");
+   		}
+   		return modelMap;
+   	}
+   }
+   ```
+
+2. 其中，需要给util层里的`ImageUtil`里面添加一个新的方法`generateNormalImg`
+
+   ```java
+   	/**
+   	 * 生成较大的图片
+   	 * @param thumbnail	这个是spring里的文件格式
+   	 * @param targetAddr 这个是存储的图片路径
+   	 * @return
+   	 */
+   	public static String generateNormalImg(ImageHolder thumbnail,String targetAddr) {
+   		//取一个时间+随机的文件名
+   		String realFileName = getRandomFileName();
+   		//获取文件扩展名
+   		String extension = getFileExtension(thumbnail.getImageName());
+   		//创建目标路径
+   		makeDirPath(targetAddr);
+   		//组合相对路径名
+   		String relativeAddr = targetAddr + realFileName + extension;
+   		//和basePath相互结合成为绝对路径,就是文件输出的路径
+   		File dest = new File(PathUtil.getImgBasePath() + relativeAddr);
+   		//操作图片
+   		try {
+   			Thumbnails.of(thumbnail.getImage()).size(337, 640)
+   			.watermark(Positions.BOTTOM_RIGHT, ImageIO.read(new File(basePath + "watermark.png")), 0.25f)
+   			.outputQuality(0.9f).toFile(dest);
+   		}catch(IOException e) {
+   			e.printStackTrace();
+   		}
+   		return relativeAddr;
+   	}
+   ```
+
    

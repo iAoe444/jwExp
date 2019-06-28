@@ -2,12 +2,13 @@ package com.iaoe.jwExp.util;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Random;
 
 import javax.imageio.ImageIO;
+
+import com.iaoe.jwExp.dto.ImageHolder;
 
 import net.coobird.thumbnailator.Thumbnails;
 import net.coobird.thumbnailator.geometry.Positions;
@@ -24,11 +25,11 @@ public class ImageUtil {
 	 * @param targetAddr 这个是存储的图片路径
 	 * @return
 	 */
-	public static String generateThumbnail(InputStream thumbnailInputStream,String fileName,String targetAddr) {
+	public static String generateThumbnail(ImageHolder thumbnail,String targetAddr) {
 		//取一个时间+随机的文件名
 		String realFileName = getRandomFileName();
 		//获取文件扩展名
-		String extension = getFileExtension(fileName);
+		String extension = getFileExtension(thumbnail.getImageName());
 		//创建目标路径
 		makeDirPath(targetAddr);
 		//组合相对路径名
@@ -37,9 +38,37 @@ public class ImageUtil {
 		File dest = new File(PathUtil.getImgBasePath() + relativeAddr);
 		//操作图片
 		try {
-			Thumbnails.of(thumbnailInputStream).size(200, 200)
+			Thumbnails.of(thumbnail.getImage()).size(200, 200)
 			.watermark(Positions.BOTTOM_RIGHT, ImageIO.read(new File(basePath + "watermark.png")), 0.25f)
 			.outputQuality(0.8f).toFile(dest);
+		}catch(IOException e) {
+			e.printStackTrace();
+		}
+		return relativeAddr;
+	}
+	
+	/**
+	 * 生成较大的图片
+	 * @param thumbnail	这个是spring里的文件格式
+	 * @param targetAddr 这个是存储的图片路径
+	 * @return
+	 */
+	public static String generateNormalImg(ImageHolder thumbnail,String targetAddr) {
+		//取一个时间+随机的文件名
+		String realFileName = getRandomFileName();
+		//获取文件扩展名
+		String extension = getFileExtension(thumbnail.getImageName());
+		//创建目标路径
+		makeDirPath(targetAddr);
+		//组合相对路径名
+		String relativeAddr = targetAddr + realFileName + extension;
+		//和basePath相互结合成为绝对路径,就是文件输出的路径
+		File dest = new File(PathUtil.getImgBasePath() + relativeAddr);
+		//操作图片
+		try {
+			Thumbnails.of(thumbnail.getImage()).size(337, 640)
+			.watermark(Positions.BOTTOM_RIGHT, ImageIO.read(new File(basePath + "watermark.png")), 0.25f)
+			.outputQuality(0.9f).toFile(dest);
 		}catch(IOException e) {
 			e.printStackTrace();
 		}

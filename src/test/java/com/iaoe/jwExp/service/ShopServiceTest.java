@@ -14,6 +14,7 @@ import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import com.iaoe.jwExp.BaseTest;
+import com.iaoe.jwExp.dto.ImageHolder;
 import com.iaoe.jwExp.dto.ShopExecution;
 import com.iaoe.jwExp.entity.Area;
 import com.iaoe.jwExp.entity.PersonInfo;
@@ -45,7 +46,8 @@ public class ShopServiceTest extends BaseTest{
 		shop.setShopName("修改后的店铺名称");
 		File shopImg = new File("C:\\Users\\iAoe\\Desktop\\1.jpg");
 		InputStream shopImgInputStream = new FileInputStream(shopImg);
-		ShopExecution se = shopService.modifyShop(shop, shopImgInputStream, "1.jpg");
+		ImageHolder imageHolder = new ImageHolder("1.jpg", shopImgInputStream);
+		ShopExecution se = shopService.modifyShop(shop, imageHolder);
 		System.out.println("新的图片地址:" + se.getShop().getShopImg());
 	}
 	
@@ -74,7 +76,8 @@ public class ShopServiceTest extends BaseTest{
 		shop.setAdvice("审核中");
 		File shopImg = new File("C:\\Users\\iAoe\\Desktop\\1.jpg");
 		InputStream shopImgInputStream = new FileInputStream(shopImg);
-		ShopExecution se = shopService.addShop(shop, shopImgInputStream , "1.jpg");
+		ImageHolder imageHolder = new ImageHolder("1.jpg", shopImgInputStream);
+		ShopExecution se = shopService.addShop(shop, imageHolder);
 		assertEquals(ShopStateEnum.CHECK.getState(), se.getState());
 	}
 }

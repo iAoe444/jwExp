@@ -1,7 +1,6 @@
 package com.iaoe.jwExp.service;
 
-import java.io.InputStream;
-
+import com.iaoe.jwExp.dto.ImageHolder;
 import com.iaoe.jwExp.dto.ShopExecution;
 import com.iaoe.jwExp.entity.Shop;
 import com.iaoe.jwExp.exceptions.ShopOperationException;
@@ -25,20 +24,18 @@ public interface ShopService {
 	/**
 	 * 更新店铺信息，包括对图片的处理
 	 * @param shop
-	 * @param shopImgInputStream
-	 * @param fileName
+	 * @param thumbnail
 	 * @return
 	 * @throws ShopOperationException
 	 */
-	ShopExecution modifyShop(Shop shop, InputStream shopImgInputStream,String fileName) throws ShopOperationException;
+	ShopExecution modifyShop(Shop shop, ImageHolder thumbnail) throws ShopOperationException;
 	
 	/**
 	 * 添加店铺操作，包括对图片的处理
 	 * @param shop
-	 * @param shopImgInputStream
-	 * @param fileName
+	 * @param thumbnail
 	 * @return
 	 * @throws ShopOperationException
 	 */
-	ShopExecution addShop(Shop shop, InputStream shopImgInputStream,String fileName) throws ShopOperationException;
+	ShopExecution addShop(Shop shop, ImageHolder thumbnail) throws ShopOperationException;
 }
