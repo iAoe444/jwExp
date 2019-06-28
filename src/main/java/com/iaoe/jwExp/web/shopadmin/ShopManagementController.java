@@ -42,6 +42,37 @@ public class ShopManagementController {
 	private AreaService areaService;
 	
 	/**
+	 * 进入店铺管理页面后调用的函数
+	 * @param request
+	 * @return
+	 */
+	@RequestMapping(value="/getshopmanagementinfo",method=RequestMethod.GET)
+	@ResponseBody
+	private Map<String,Object> getShopManagementInfo(HttpServletRequest request){
+		Map<String, Object> modelMap = new HashMap<String, Object>();
+		long shopId = HttpServletRequestUtil.getLong(request, "shopId");
+		//如果shopId不合法
+		if(shopId<=0) {
+			Object currentShopObj = request.getSession().getAttribute("currentShop");
+			if(currentShopObj==null) {
+				//如果当前的没有session表示当前的shopId，那么就重定向
+				modelMap.put("redirect",true);
+				modelMap.put("url", "/jwExp/shopadmin/getshoplist");
+			}else {
+				Shop currentShop = (Shop) currentShopObj;
+				modelMap.put("redirect",false);
+				modelMap.put("shopId",currentShop.getShopId());
+			}
+		}else {
+			//新建一个currentShop写入我们的shopId
+			Shop currentShop = new Shop();
+			currentShop.setShopId(shopId);
+			request.getSession().setAttribute("currentShop", currentShop);
+			modelMap.put("redirect", false);
+		}
+		return modelMap;
+	}
+	/**
 	 * 根据session里面的ownerid获取店铺信息
 	 * @param request
 	 * @return

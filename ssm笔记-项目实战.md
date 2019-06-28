@@ -2090,4 +2090,142 @@ public class ShopCategoryDaoTest extends BaseTest{
 
    ![](https://ws1.sinaimg.cn/large/006bBmqIgy1g4gpg7vqjuj30ca0nf74y.jpg)
 
+### 前端显示店铺管理页面功能
+
+1. 设置店铺管理页面`jwExp\src\main\webapp\WEB-INF\html\shop\shopmanagement.html`
+
+   ```html
+   <!DOCTYPE html>
+   <html>
+       <head>
+           <meta charset="utf-8">
+           <meta http-equiv="X-UA-Compatible" content="IE=edge">
+           <title>商店管理</title>
+           <meta name="viewport" content="initial-scale=1, maximum-scale=1">
+           <link rel="shortcut icon" href="/favicon.ico">
+           <meta name="apple-mobile-web-app-capable" content="yes">
+           <meta name="apple-mobile-web-app-status-bar-style" content="black">
+           <link rel="stylesheet" href="//g.alicdn.com/msui/sm/0.6.2/css/sm.min.css">
+           <link rel="stylesheet" href="//g.alicdn.com/msui/sm/0.6.2/css/sm-extend.min.css">
+           <link rel="stylesheet" href="../resources/css/shop/shopmanagement.css">
+       </head>
+   <body>
+       <header class="bar bar-nav">
+           <h1 class="title">商店管理</h1>
+       </header>
+       <div class="content">
+           <div class="content-block">
+               <div class="row">
+                   <div class="col-50 mb">
+                       <a id="shopinfo" href="" class="button button-big button-fill">商铺信息</a>
+                   </div>
+                   <div class="col-50 mb">
+                       <a href="/jwExp/shopadmin/productmanage" class="button button-big button-fill">商品管理</a>
+                   </div>
+                   <div class="col-50 mb">
+                       <a href="/jwExp/shopadmin/productcategorymanage" class="button button-big button-fill">类别管理</a>
+                   </div>
+                   <div class="col-100 mb">
+                       <a href="/jwExp/shopadmin/shoplist" class="button button-big button-fill button-danger">返回</a>
+                   </div>
+               </div>
+           </div>
+       </div>
+       
+   
+   
+       <script type='text/javascript' src='//g.alicdn.com/sj/lib/zepto/zepto.min.js' charset='utf-8'></script>
+       <script type='text/javascript' src='//g.alicdn.com/msui/sm/0.6.2/js/sm.min.js' charset='utf-8'></script>
+       <script type='text/javascript' src='//g.alicdn.com/msui/sm/0.6.2/js/sm-extend.min.js' charset='utf-8'></script>
+       <script type='text/javascript' src='../resources/js/common/commonutil.js' charset='utf-8'></script>
+       <script type='text/javascript' src='../resources/js/shop/shopmanagement.js' charset='utf-8'></script>
+   </body>
+   </html>
+   ```
+
+2. 设置相应的css代码`jwExp\src\main\webapp\resources\css\shop\shopmanagement.css`
+
+   ```css
+   .mb {
+       margin-bottom: .5rem;
+   }
+   ```
+
+3. 设置`ShopAdminController`路由跳转到这个页面
+
+   ```java
+   	@RequestMapping(value="/shopmanagement")
+   	public String shopManagement() {
+   		return "shop/shopmanagement";
+   	}
+   ```
+
+4. 修改之前的shoplist.js的代码，让其能够跳转到这个页面
+
+   ```javascript
+   	function goShop(status, id) {
+   		if (status != 0 && status != -1) {
+   			return '<a href="/jwExp/shopadmin/shopmanagement?shopId='+ id +'">进入</a>';
+   		} else {
+   			return '';
+   		}
+   ```
+
+5. 设置之前的`ShopManagementController`来拦截进入`shopManageMent`的操作
+
+   ```java
+   	/**
+   	 * 进入店铺管理页面后调用的函数
+   	 * @param request
+   	 * @return
+   	 */
+   	@RequestMapping(value="/getshopmanagementinfo",method=RequestMethod.GET)
+   	@ResponseBody
+   	private Map<String,Object> getShopManagementInfo(HttpServletRequest request){
+   		Map<String, Object> modelMap = new HashMap<String, Object>();
+   		long shopId = HttpServletRequestUtil.getLong(request, "shopId");
+   		//如果shopId不合法
+   		if(shopId<=0) {
+   			Object currentShopObj = request.getSession().getAttribute("currentShop");
+   			if(currentShopObj==null) {
+   				//如果当前的没有session表示当前的shopId，那么就重定向
+   				modelMap.put("redirect",true);
+   				modelMap.put("url", "/jwExp/shopadmin/getshoplist");
+   			}else {
+   				Shop currentShop = (Shop) currentShopObj;
+   				modelMap.put("redirect",false);
+   				modelMap.put("shopId",currentShop.getShopId());
+   			}
+   		}else {
+   			//新建一个currentShop写入我们的shopId
+   			Shop currentShop = new Shop();
+   			currentShop.setShopId(shopId);
+   			request.getSession().setAttribute("currentShop", currentShop);
+   			modelMap.put("redirect", false);
+   		}
+   		return modelMap;
+   	}
+   ```
+
+6. 设置js代码`jwExp\src\main\webapp\resources\js\shop\shopmanagement.js`
+
+   ```javascript
+   $(function(){
+   	var shopId = getQueryString('shopId');
+   	var shopInfoUrl = '/jwExp/shopadmin/getshopmanagementinfo?shopId='+shopId;
+   	//这里主要起到一个拦截器的作用，如果是误闯进去的，那么就重定向
+   	$.getJSON(shopInfoUrl,function(data){
+   		if(data.redirect){
+   			window.location.href=data.url;
+   		}else{
+   			if(data.shopId!=undefined&&data.shopId!=null){
+   				shopId = data.shopId;
+   			}
+   			$('#shopinfo')
+   				.attr('href','/jwExp/shopadmin/shopoperation?shopId='+shopId);
+   		}
+   	})
+   });
+   ```
+
    
