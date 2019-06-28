@@ -2908,3 +2908,182 @@ public class ShopCategoryDaoTest extends BaseTest{
    这里由于有两类要删除的商品栏，一种是已经存在的商品分类，一种是用于新增的商品分类，两者的删除策略有所不同
 
    ![](https://ws1.sinaimg.cn/large/006bBmqIgy1g4h4vqaywyj30es09nwei.jpg)
+
+## 5. 商品功能的实现
+
+### Dao层实现商品的添加和图片的批量添加
+
+1. dao层`ProductDao`及`mapper`实现商品的添加功能
+
+   ```java
+   package com.iaoe.jwExp.dao;
+   
+   import com.iaoe.jwExp.entity.Product;
+   
+   public interface ProductDao {
+   	/**
+   	 * 插入商品
+   	 * @param product
+   	 * @return
+   	 */
+   	int insertProduct(Product product);	
+   }
+   ```
+
+   ```xml
+   <?xml version="1.0" encoding="UTF-8"?>
+   <!DOCTYPE mapper
+       PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+       "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+   <mapper namespace="com.iaoe.jwExp.dao.ProductDao">
+   	<insert id="insertProduct" parameterType="com.iaoe.jwExp.entity.Product"
+   		useGeneratedKeys="true" keyProperty="productId" keyColumn="product_id">
+   		INSERT INTO
+   		tb_product(product_name,product_desc,img_addr,
+   		normal_price,promotion_price,priority,create_time,
+   		last_edit_time,enable_status,product_category_id,
+   		shop_id)
+   		VALUES
+   		(#{productName},#{productDesc},#{imgAddr},
+   		#{normalPrice},#{promotionPrice},#{priority},#{createTime},
+   		#{lastEditTime},#{enableStatus},#{productCategory.productCategoryId},
+   		#{shop.shopId})
+   	</insert>
+   </mapper>
+   ```
+
+2. dao层和mapper层`ProductImgDao`实现图片的批量添加
+
+   ```java
+   package com.iaoe.jwExp.dao;
+   
+   import java.util.List;
+   
+   import com.iaoe.jwExp.entity.ProductImg;
+   
+   public interface ProductImgDao {
+   	
+   	/**
+   	 * 批量添加商品详情图片
+   	 * @param productImgList
+   	 * @return
+   	 */
+   	int batchInsertProductImg(List<ProductImg> productImgList);
+   }
+   ```
+
+   ```xml
+   <?xml version="1.0" encoding="UTF-8"?>
+   <!DOCTYPE mapper
+       PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+       "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+   <mapper namespace="com.iaoe.jwExp.dao.ProductImgDao">
+   	<insert id="batchInsertProductImg" parameterType="java.util.List">
+   		INSERT INTO
+   		tb_product_img(img_addr,img_desc,priority,
+   		create_time,product_id)
+   		VALUES
+   		<foreach collection="list" item="productImg" index="index"
+   			separator=",">
+   			(
+   			#{productImg.imgAddr},
+   			#{productImg.imgDesc},
+   			#{productImg.priority},
+   			#{productImg.createTime},
+   			#{productImg.productId}
+   			)
+   		</foreach>
+   	</insert>
+   </mapper>
+   ```
+
+3. junit`ProductDaoImgTest`测试图片批量添加功能
+
+   ```java
+   package com.iaoe.jwExp.dao;
+   
+   import static org.junit.Assert.assertEquals;
+   
+   import java.util.ArrayList;
+   import java.util.Date;
+   import java.util.List;
+   
+   import org.junit.FixMethodOrder;
+   import org.junit.Test;
+   import org.junit.runners.MethodSorters;
+   import org.springframework.beans.factory.annotation.Autowired;
+   
+   import com.iaoe.jwExp.BaseTest;
+   import com.iaoe.jwExp.entity.ProductImg;
+   
+   @FixMethodOrder(MethodSorters.NAME_ASCENDING)
+   public class ProductImgDaoTest extends BaseTest {
+   	@Autowired
+   	private ProductImgDao productImgDao;
+   
+   	@Test
+   	public void testABatchInsertProductImg() throws Exception {
+   		ProductImg productImg1 = new ProductImg();
+   		productImg1.setImgAddr("图片1");
+   		productImg1.setImgDesc("测试图片1");
+   		productImg1.setPriority(1);
+   		productImg1.setCreateTime(new Date());
+   		productImg1.setProductId(1L);
+   		ProductImg productImg2 = new ProductImg();
+   		productImg2.setImgAddr("图片2");
+   		productImg2.setPriority(1);
+   		productImg2.setCreateTime(new Date());
+   		productImg2.setProductId(1L);
+   		List<ProductImg> productImgList = new ArrayList<ProductImg>();
+   		productImgList.add(productImg1);
+   		productImgList.add(productImg2);
+   		int effectedNum = productImgDao.batchInsertProductImg(productImgList);
+   		assertEquals(2, effectedNum);
+   	}
+   }
+   ```
+
+4. junit测试`productDao`的添加功能
+
+   ```java
+   package com.iaoe.jwExp.dao;
+   
+   import static org.junit.Assert.assertEquals;
+   
+   import java.util.Date;
+   
+   import org.junit.Test;
+   import org.springframework.beans.factory.annotation.Autowired;
+   
+   import com.iaoe.jwExp.BaseTest;
+   import com.iaoe.jwExp.entity.Product;
+   import com.iaoe.jwExp.entity.ProductCategory;
+   import com.iaoe.jwExp.entity.Shop;
+   
+   public class ProductDaoTest extends BaseTest{
+   	@Autowired
+   	private ProductDao productDao;
+   	
+   	@Test
+   	public void testAInsertProduct() throws Exception {
+   		Shop shop1 = new Shop();
+   		shop1.setShopId(2L);
+   		ProductCategory pc1 = new ProductCategory();
+   		pc1.setProductCategoryId(3L);
+   		Product product1 = new Product();
+   		product1.setProductName("测试1");
+   		product1.setProductDesc("测试Desc1");
+   		product1.setImgAddr("test1");
+   		product1.setPriority(0);
+   		product1.setEnableStatus(1);
+   		product1.setCreateTime(new Date());
+   		product1.setLastEditTime(new Date());
+   		product1.setShop(shop1);
+   		product1.setProductCategory(pc1);
+   		int effectedNum = productDao.insertProduct(product1);
+   		assertEquals(1, effectedNum);
+   	}
+   }
+   ```
+
+   
