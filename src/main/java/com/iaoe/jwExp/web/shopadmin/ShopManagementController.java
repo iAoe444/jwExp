@@ -42,6 +42,35 @@ public class ShopManagementController {
 	private AreaService areaService;
 	
 	/**
+	 * 根据session里面的ownerid获取店铺信息
+	 * @param request
+	 * @return
+	 */
+	@RequestMapping(value="/getshoplist",method=RequestMethod.GET)
+	@ResponseBody
+	private Map<String,Object> getShopList(HttpServletRequest request){
+		Map<String, Object> modelMap = new HashMap<String, Object>();
+		//由于没有实现登录功能，这里暂时使用假的用户信息
+		PersonInfo user = new PersonInfo();
+		user.setUserId(1L);
+		user.setName("test");
+		request.getSession().setAttribute("user", user);
+		user = (PersonInfo) request.getSession().getAttribute("user");
+		try {
+			Shop shopCondition = new Shop();
+			shopCondition.setOwner(user);
+			ShopExecution se = shopService.getShopList(shopCondition, 0, 100);
+			modelMap.put("success",true);
+			modelMap.put("user",user);
+			modelMap.put("shopList",se.getShopList());
+		}catch(Exception e) {
+			modelMap.put("success", false);
+			modelMap.put("errMsg", e.getMessage());
+		}
+		return modelMap;
+	}
+	
+	/**
 	 * 根据shopId返回区域列表等信息
 	 * @param request
 	 * @return

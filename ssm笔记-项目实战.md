@@ -1895,4 +1895,43 @@ public class ShopCategoryDaoTest extends BaseTest{
    	}
    ```
 
+### Controller层实现店铺列表功能
+
+1. 这里很简单，在`shopMaagementController`层实现，不过由于还没有登录功能，所以这里使用的是假的数据
+
+   ```java
+   	/**
+   	 * 根据session里面的ownerid获取店铺信息
+   	 * @param request
+   	 * @return
+   	 */
+   	@RequestMapping(value="/getshoplist",method=RequestMethod.GET)
+   	@ResponseBody
+   	private Map<String,Object> getShopList(HttpServletRequest request){
+   		Map<String, Object> modelMap = new HashMap<String, Object>();
+   		//由于没有实现登录功能，这里暂时使用假的用户信息
+   		PersonInfo user = new PersonInfo();
+   		user.setUserId(1L);
+   		user.setName("test");
+   		request.getSession().setAttribute("user", user);
+   		user = (PersonInfo) request.getSession().getAttribute("user");
+   		try {
+   			Shop shopCondition = new Shop();
+   			shopCondition.setOwner(user);
+   			ShopExecution se = shopService.getShopList(shopCondition, 0, 100);
+   			modelMap.put("success",true);
+   			modelMap.put("user",user);
+   			modelMap.put("shopList",se.getShopList());
+   		}catch(Exception e) {
+   			modelMap.put("success", false);
+   			modelMap.put("errMsg", e.getMessage());
+   		}
+   		return modelMap;
+   	}
+   ```
+
+2. 验证是否成功`http://localhost:8080/jwExp/shopadmin/getshoplist`
+
+   ![](https://ws1.sinaimg.cn/large/006bBmqIgy1g4gopvw3m4j30u90cq0u5.jpg)
+
    
