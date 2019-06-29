@@ -37,4 +37,13 @@ public interface ProductService {
 	 */
 	ProductExecution modifyProduct(Product product,ImageHolder thumbnail,
 			List<ImageHolder> productImgList) throws ProductOperationException;
+	
+	/**
+	 * 根据信息获取商品列表
+	 * @param productCondition
+	 * @param pageIndex
+	 * @param pageSize
+	 * @return
+	 */
+	ProductExecution getProductList(Product productCondition, int pageIndex, int pageSize);
 }

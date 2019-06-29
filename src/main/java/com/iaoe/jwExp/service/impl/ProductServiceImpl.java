@@ -18,6 +18,7 @@ import com.iaoe.jwExp.enums.ProductStateEnum;
 import com.iaoe.jwExp.exceptions.ProductOperationException;
 import com.iaoe.jwExp.service.ProductService;
 import com.iaoe.jwExp.util.ImageUtil;
+import com.iaoe.jwExp.util.PageCalculator;
 import com.iaoe.jwExp.util.PathUtil;
 
 @Service
@@ -163,6 +164,17 @@ public class ProductServiceImpl implements ProductService{
 		}
 		//数据库删除所有图片
 		productImgDao.deleteProductImgByProductId(productId);
+	}
+
+	@Override
+	public ProductExecution getProductList(Product productCondition, int pageIndex, int pageSize) {
+		int rowIndex = PageCalculator.calculateRowIndex(pageIndex, pageSize);
+		List<Product> productList = productDao.queryProductList(productCondition, rowIndex, pageSize);
+		int count = productDao.queryProductCount(productCondition);
+		ProductExecution pe = new ProductExecution();
+		pe.setProductList(productList);
+		pe.setCount(count);
+		return pe;
 	}
 
 }

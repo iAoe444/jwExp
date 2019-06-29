@@ -3,7 +3,7 @@ $(function() {
 	// 允许返回的最大条数
 	var maxItems = 999;
 	// 单页最多的数量
-	var pageSize = 1;
+	var pageSize = 10;
 	// 查询的url
 	var listUrl = '/jwExp/frontend/listshops';
 	// 获取区域和店铺列表的url
@@ -94,10 +94,10 @@ $(function() {
 				// 获取总数
 				var total = $('.list-div .card').length;
 				if (total >= maxItems) {
-					// 加载完毕，则注销无限加载事件，以防不必要的加载
-					$.detachInfiniteScroll($('.infinite-scroll'));
-					// 删除加载提示符
-					$('.infinite-scroll-preloader').remove();
+					// 隐藏提示符
+					$('.infinite-scroll-preloader').hide();
+				} else{
+					$('.infinite-scroll-preloader').show();
 				}
 				// 还没有达到上限的时候，还可以无限滚动
 				pageNum += 1;
@@ -155,7 +155,7 @@ $(function() {
 			});
 
 	// 店铺名字如果改变，则清空设置名称
-	$('#search').on('input', function(e) {
+	$('#search').on('change', function(e) {
 		shopName = e.target.value;
 		$('.list-div').empty();
 		pageNum = 1;

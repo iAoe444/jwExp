@@ -20,4 +20,22 @@ public class FrontEndController {
 	private String shopList() {
 		return "frontend/shoplist";
 	}
+	
+	/**
+	 * 店铺列表功能
+	 * @return
+	 */
+	@RequestMapping(value = "/shopdetail", method = RequestMethod.GET)
+	private String shopDetail() {
+		return "frontend/shopdetail";
+	}
+	
+	/**
+	 * 登录功能
+	 * @return
+	 */
+	@RequestMapping(value = "/login", method = RequestMethod.GET)
+	private String login() {
+		return "frontend/login";
+	}
 }
