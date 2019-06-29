@@ -60,7 +60,6 @@ public class ProductCategoryManagementController {
 		for (ProductCategory pc : productCategoryList) {
 			pc.setShopId(currentShop.getShopId());
 			pc.setCreateTime(new Date());
-			;
 		}
 		if (productCategoryList != null && productCategoryList.size() > 0) {
 			try {

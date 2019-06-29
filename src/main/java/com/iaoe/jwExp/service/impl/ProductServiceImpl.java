@@ -5,6 +5,7 @@ import java.util.Date;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.iaoe.jwExp.dao.ProductDao;
@@ -19,6 +20,7 @@ import com.iaoe.jwExp.service.ProductService;
 import com.iaoe.jwExp.util.ImageUtil;
 import com.iaoe.jwExp.util.PathUtil;
 
+@Service
 public class ProductServiceImpl implements ProductService{
 	@Autowired
 	private ProductDao productDao;

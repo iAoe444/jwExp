@@ -97,9 +97,7 @@ public class ProductManagementController {
 			try {
 				Shop currentShop = (Shop) request.getSession().getAttribute(
 						"currentShop");
-				Shop shop = new Shop();
-				shop.setShopId(currentShop.getShopId());
-				product.setShop(shop);
+				product.setShop(currentShop);
 				ProductExecution pe = productService.addProduct(product,
 						thumbnail, productImgs);
 				if (pe.getState() == ProductStateEnum.SUCCESS.getState()) {
