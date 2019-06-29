@@ -4193,3 +4193,342 @@ $(function() {
 2. 输入方法名，点击ok即可生成方法
 
    ![](https://ws1.sinaimg.cn/large/006bBmqIgy1g4ht6vhuluj30do0fkt8w.jpg)
+
+## 6. 开发剩余前端界面
+
+> 由于前面的基本上是最困难的点，因为涉及到增删查改功能，而接下的前端页面的展示只剩下查的功能了，所以相对来说比较简单
+
+### 首页的前后端开发
+
+> 首页里面有头条，有店铺分类，店铺分类的接口我们之前已经写了，接下来我们来完成头条的查询接口后逐步的实现
+
+1. Dao层实现头条接口`HeadLineDao`
+
+   ```java
+   package com.iaoe.jwExp.dao;
+   
+   import java.util.List;
+   
+   import org.apache.ibatis.annotations.Param;
+   
+   import com.iaoe.jwExp.entity.HeadLine;
+   
+   public interface HeadLineDao {
+   	
+   	/**
+   	 * 查询头条列表
+   	 * @param headLineCondition
+   	 * @return
+   	 */
+   	List<HeadLine> queryHeadLine(
+   			@Param("headLineCondition") HeadLine headLineCondition);
+   }
+   ```
+
+   mapper层实现`HeadLineDao`
+
+   ```java
+   <?xml version="1.0" encoding="UTF-8"?>
+   <!DOCTYPE mapper
+       PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+       "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+   <mapper namespace="com.iaoe.jwExp.dao.HeadLineDao">
+   	<select id="queryHeadLine" resultType="com.iaoe.jwExp.entity.HeadLine">
+   		SELECT
+   		line_id,
+   		line_name,
+   		line_link,
+   		line_img,
+   		priority,
+   		enable_status,
+   		create_time,
+   		last_edit_time
+   		FROM
+   		tb_head_line
+   		<where>
+   			<if test="headLineCondition.enableStatus!=null">
+   				and enable_status = #{headLineCondition.enableStatus}
+   			</if>
+   		</where>
+   		ORDER BY
+   		priority DESC
+   	</select>
+   </mapper>
+   ```
+
+2. 修改之前的mapper层的ShopCategoryDao实现方法，之前我们有个查询方法不能查一级目录，现在我们改下
+
+   ```xml
+   		tb_shop_category
+   		<where>
+   			<!-- 这里修改了-->
+   			<if test="shopCategoryCondition==null">
+   				and parent_id is null
+   			</if>
+   			<if test="shopCategoryCondition!=null">
+   				and parent_id is not null
+   			</if>
+               <!-- 这里也修改了-->
+   			<if test="shopCategoryCondition!=null and shopCategoryCondition.parent!=null">
+   				and
+   				parent_id=#{shopCategoryCondition.parent.shopCategoryId}
+   			</if>
+   ```
+
+3. Junit`HeadLineDaoTest`测试一下
+
+   ```java
+   package com.iaoe.jwExp.dao;
+   
+   import static org.junit.Assert.assertEquals;
+   
+   import java.util.List;
+   
+   import org.junit.FixMethodOrder;
+   import org.junit.Test;
+   import org.junit.runners.MethodSorters;
+   import org.springframework.beans.factory.annotation.Autowired;
+   
+   import com.iaoe.jwExp.BaseTest;
+   import com.iaoe.jwExp.entity.HeadLine;
+   
+   @FixMethodOrder(MethodSorters.NAME_ASCENDING)
+   public class HeadLineDaoTest extends BaseTest {
+   	@Autowired
+   	private HeadLineDao headLineDao;
+   	
+   	@Test
+   	public void testQueryHeadLine() {
+   		List<HeadLine> headLineList = headLineDao.queryHeadLine(new HeadLine());
+   		assertEquals(1, headLineList.size());
+   	}
+   }
+   ```
+
+   Junit`ShopCategoryDaoTest`测试一下
+
+   ```java
+   	@Test
+   	public void testQueryShopCategory(){
+   		List<ShopCategory> shopCategoryList = shopCategoryDao.queryShopCategory(null);
+   		
+   		System.out.println(shopCategoryList.size());
+   	}
+   ```
+
+4. service层`HeadLineService`实现返回头条的功能
+
+   ```java
+   package com.iaoe.jwExp.service;
+   
+   import java.io.IOException;
+   import java.util.List;
+   
+   import com.iaoe.jwExp.entity.HeadLine;
+   
+   public interface HeadLineService {
+   	
+   	/**
+   	 * 根据传入条件来返回指定的头条列表
+   	 * @param headLineCondition
+   	 * @return
+   	 * @throws IOException
+   	 */
+   	List<HeadLine> getHeadLineList(HeadLine headLineCondition)
+   			throws IOException;
+   }
+   ```
+
+   `HeadLineService`实现这个接口
+
+   ```java
+   package com.iaoe.jwExp.service.impl;
+   
+   import java.io.IOException;
+   import java.util.List;
+   
+   import org.springframework.beans.factory.annotation.Autowired;
+   import org.springframework.stereotype.Service;
+   
+   import com.iaoe.jwExp.dao.HeadLineDao;
+   import com.iaoe.jwExp.entity.HeadLine;
+   import com.iaoe.jwExp.service.HeadLineService;
+   
+   @Service
+   public class HeadLineServiceImpl implements HeadLineService{
+   
+   	@Autowired
+   	private HeadLineDao headLineDao; 
+   	
+   	@Override
+   	public List<HeadLine> getHeadLineList(HeadLine headLineCondition) throws IOException {
+   		return headLineDao.queryHeadLine(headLineCondition);
+   	}
+   	
+   }
+   ```
+
+5. Controller层`jwExp\src\main\java\com\iaoe\jwExp\web\frontend\MainPageController.java`实现接口返回首页信息
+
+   ```java
+   package com.iaoe.jwExp.web.frontend;
+   
+   import java.util.ArrayList;
+   import java.util.HashMap;
+   import java.util.List;
+   import java.util.Map;
+   
+   import org.springframework.beans.factory.annotation.Autowired;
+   import org.springframework.stereotype.Controller;
+   import org.springframework.web.bind.annotation.RequestMapping;
+   import org.springframework.web.bind.annotation.RequestMethod;
+   import org.springframework.web.bind.annotation.ResponseBody;
+   
+   import com.iaoe.jwExp.entity.HeadLine;
+   import com.iaoe.jwExp.entity.ShopCategory;
+   import com.iaoe.jwExp.service.HeadLineService;
+   import com.iaoe.jwExp.service.ShopCategoryService;
+   
+   @Controller
+   @RequestMapping("/frontend")
+   public class MainPageController {
+   	@Autowired
+   	private ShopCategoryService shopCategoryService;
+   	@Autowired
+   	private HeadLineService headLineService;
+   	
+   	/**
+   	 * 初始化前端展示系统的主页信息，一级店铺列表以及头条列表
+   	 * @return
+   	 */
+   	@RequestMapping(value = "/listmainpageinfo", method = RequestMethod.GET)
+   	@ResponseBody
+   	private Map<String, Object> list1stShopCategory() {
+   		Map<String, Object> modelMap = new HashMap<String, Object>();
+   		List<ShopCategory> shopCategoryList = new ArrayList<ShopCategory>();
+   		try {
+   			//获取商品列表
+   			shopCategoryList = shopCategoryService
+   					.getShopCategoryList(null);
+   			modelMap.put("shopCategoryList", shopCategoryList);
+   		} catch (Exception e) {
+   			modelMap.put("success", false);
+   			modelMap.put("errMsg", e.getMessage());
+   			return modelMap;
+   		}
+   		List<HeadLine> headLineList = new ArrayList<HeadLine>();
+   		try {
+   			HeadLine headLineCondition = new HeadLine();
+   			// 获取状态为1的头条列表
+   			headLineCondition.setEnableStatus(1);
+   			headLineList = headLineService.getHeadLineList(headLineCondition);
+   			modelMap.put("headLineList", headLineList);
+   		} catch (Exception e) {
+   			modelMap.put("success", false);
+   			modelMap.put("errMsg", e.getMessage());
+   			return modelMap;
+   		}
+   		modelMap.put("success", true);
+   		return modelMap;
+   	}
+   }
+   ```
+
+6. 接下来是首页的设计，这里略过，然后这里显示js的主要代码`jwExp\src\main\webapp\resources\js\frontend\index.js`
+
+   ```javascript
+   $(function() {
+   	var url = '/jwExp/frontend/listmainpageinfo';
+   
+   	$.getJSON(url, function(data) {
+   		// 获取初始化信息
+   		if (data.success) {
+   			var headLineList = data.headLineList;
+   			var swiperHtml = '';
+   			// 渲染头条信息
+   			headLineList.map(function(item, index) {
+   				swiperHtml += '' + '<div class="swiper-slide img-wrap">'
+   						+ '<img class="banner-img" src="' + item.lineImg
+   						+ '" alt="' + item.lineName + '">' + '</div>';
+   			});
+   			// 置入头条
+   			$('.swiper-wrapper').html(swiperHtml);
+   			$(".swiper-container").swiper({
+   				autoplay : 1000,
+   				autoplayDisableOnInteraction : false
+   			});
+   			// 置入商品分类信息
+   			var shopCategoryList = data.shopCategoryList;
+   			var categoryHtml = '';
+   			shopCategoryList.map(function(item, index) {
+   				categoryHtml += ''
+   						+ '<div class="col-50 shop-classify" data-category='
+   						+ item.shopCategoryId + '>' + '<div class="word">'
+   						+ '<p class="shop-title">' + item.shopCategoryName
+   						+ '</p>' + '<p class="shop-desc">'
+   						+ item.shopCategoryDesc + '</p>' + '</div>'
+   						+ '<div class="shop-classify-img-warp">'
+   						+ '<img class="shop-img" src="' + item.shopCategoryImg
+   						+ '">' + '</div>' + '</div>';
+   			});
+   			$('.row').html(categoryHtml);
+   		}
+   	});
+   
+   	// 打开侧边栏
+   	$('#me').click(function() {
+   		$.openPanel('#panel-left-demo');
+   	});
+   
+   	// 进入某个分类
+   	$('.row').on('click', '.shop-classify', function(e) {
+   		var shopCategoryId = e.currentTarget.dataset.category;
+   		var newUrl = '/jwExp/frontend/shoplist?parentId=' + shopCategoryId;
+   		window.location.href = newUrl;
+   	});
+   
+   });
+   ```
+
+7. 新建一个controller`jwExp\src\main\java\com\iaoe\jwExp\web\frontend\FrontEndController.java`实现路由转发首页
+
+   ```java
+   package com.iaoe.jwExp.web.frontend;
+   
+   import org.springframework.stereotype.Controller;
+   import org.springframework.web.bind.annotation.RequestMapping;
+   import org.springframework.web.bind.annotation.RequestMethod;
+   
+   @Controller
+   @RequestMapping("/frontend")
+   public class FrontEndController {
+   	@RequestMapping(value = "/index", method = RequestMethod.GET)
+   	private String index() {
+   		return "frontend/index";
+   	}
+   }
+   ```
+
+   ![](https://ws1.sinaimg.cn/large/006bBmqIgy1g4hvt6j9bcj30cs0ni752.jpg)
+
+### (Tomcat技巧) 如何将图片地址暴露出去
+
+> 这里我们将图片放在项目外，那么怎么将图片地址暴露出去呢，使用tomcat的配置即可
+
+1. 打开项目servers对应tomcat版本的`server.xml`
+
+   ![](https://ws1.sinaimg.cn/large/006bBmqIgy1g4hvvkew5yj309q05mdfs.jpg)
+
+2. 到最下面输入
+
+   ```xml
+   <Context docBase="E:/jwExp/image/upload" path="/upload" />
+   ```
+
+   ![](https://ws1.sinaimg.cn/large/006bBmqIgy1g4hvw8tz0dj30la06ft92.jpg)
+
+3. 这样，你就可以通过`http://localhost:8080/upload/item/shop/2/2019062910043074313.png`这样的一个地址访问到你的图片了
+
+   ![1561780428698](assets/1561780428698.png)
+
+   
