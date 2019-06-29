@@ -3898,4 +3898,298 @@ $(function() {
    	}
    ```
 
+### 前后端实现商品编辑功能
+
+> 这里通过service层，controller实现商品的编辑功能以及前端的实现
+
+1. service层`productService`层实现商品编辑功能
+
+   ```java
+   	/**
+   	 * 通过id查询商品信息
+   	 * @param productId
+   	 * @return
+   	 */
+   	Product getProductById(long productId);
+   	
+   	/**
+   	 * 修改商品信息并对图片进行处理
+   	 * @param product
+   	 * @param thumbnail
+   	 * @param productImgList
+   	 * @return
+   	 * @throws ProductOperationException
+   	 */
+   	ProductExecution modifyProduct(Product product,ImageHolder thumbnail,
+   			List<ImageHolder> productImgList) throws ProductOperationException;
+   ```
+
+   `productServiceImpl`实现这两个接口
+
+   ```java
+   @Override
+   	public Product getProductById(long productId) {
+   		return productDao.queryProductById(productId);
+   	}
    
+   	// 1.若缩略图参数有值，则处理缩略图，若原先存在缩略图则先删除再添加新图，之后获取缩略图相对路径并赋值给product
+   	// 2.若商品详情图列表参数有值，对商品详情图片列表进行同样的操作
+   	// 3.将tb_product_img下面的该商品原先的商品详情图记录全部清除
+   	// 4.更新tb_product_img和tb_product的信息
+   	@Override
+   	public ProductExecution modifyProduct(Product product, ImageHolder thumbnail, List<ImageHolder> productImgList)
+   			throws ProductOperationException {
+   		//空值判断
+   		if (product != null && product.getShop() != null && product.getShop().getShopId() != null) {
+   			//更新时间
+   			product.setLastEditTime(new Date());
+   			//如果商品缩略图不为空
+   			if (thumbnail != null) {
+   				// 查询这个product
+   				Product tempProduct = productDao.queryProductById(product.getProductId());
+   				if (tempProduct.getImgAddr() != null) {
+   					//删除图片
+   					ImageUtil.deleteFileOrPath(tempProduct.getImgAddr());
+   				}
+   				//添加图片
+   				addThumbnail(product, thumbnail);
+   			}
+   			//如果有商品详情图传入
+   			if (productImgList != null && productImgList.size() > 0) {
+   				//删除图片
+   				deleteProductImgList(product.getProductId());
+   				//添加图片
+   				addProductImgs(product, productImgList);
+   			}
+   			try {
+   				int effectedNum = productDao.updateProduct(product);
+   				if (effectedNum <= 0) {
+   					throw new RuntimeException("更新商品信息失败");
+   				}
+   				return new ProductExecution(ProductStateEnum.SUCCESS, product);
+   			} catch (Exception e) {
+   				throw new RuntimeException("更新商品信息失败:" + e.toString());
+   			}
+   		} else {
+   			return new ProductExecution(ProductStateEnum.EMPTY);
+   		}
+   	}
+   	
+   	//删除图片操作
+   	private void deleteProductImgList(long productId) {
+   		// 根据productId查询所有的图片
+   		List<ProductImg> productImgList = productImgDao.queryProductImgList(productId);
+   		//删除所有的图片
+   		for (ProductImg productImg : productImgList) {
+   			ImageUtil.deleteFileOrPath(productImg.getImgAddr());
+   		}
+   		//数据库删除所有图片
+   		productImgDao.deleteProductImgByProductId(productId);
+   	}
+   ```
+
+2. `productImgDao`实现通过商品来查找所有图片功能，由于在更换商品图片时除了在数据库删除还需要删除之前的所有图片，所以这里使用这个方法来实现
+
+   ```java
+   	
+   	/**
+   	 * 通过productId来查询所有的商品详情图
+   	 * @param productId
+   	 * @return
+   	 */
+   	List<ProductImg> queryProductImgList(long productId);
+   ```
+
+   mapper`productImgDao`
+
+   ```xml
+   	<!-- 查询商品图片 -->
+   	<select id="queryProductImgList"
+   		resultType="com.iaoe.jwExp.entity.ProductImg">
+   		SELECT
+   		product_img_id,
+   		img_addr,
+   		img_desc,
+   		priority,
+   		create_time,
+   		product_id
+   		FROM tb_product_img
+   		WHERE product_id=#{productId}
+   		ORDER BY
+   		product_img_id ASC
+   	</select>
+   ```
+
+3. `ProductManageController`层实现查找商品和修改商品功能
+
+   ```java
+   	/**
+   	 * 通过商品id获取商品信息
+   	 * 
+   	 * @param productId
+   	 * @return
+   	 */
+   	@RequestMapping(value = "/getproductbyid", method = RequestMethod.GET)
+   	@ResponseBody
+   	private Map<String, Object> getProductById(@RequestParam Long productId) {
+   		Map<String, Object> modelMap = new HashMap<String, Object>();
+   		// 非空判断
+   		if (productId > -1) {
+   			// 获取店铺信息
+   			Product product = productService.getProductById(productId);
+   			// 获取该店铺下的商品类别列表
+   			List<ProductCategory> productCategoryList = productCategoryService
+   					.getProductCategoryList(product.getShop().getShopId());
+   			modelMap.put("product", product);
+   			modelMap.put("productCategoryList", productCategoryList);
+   			modelMap.put("success", true);
+   		} else {
+   			modelMap.put("success", false);
+   			modelMap.put("errMsg", "empty pageSize or pageIndex or shopId");
+   		}
+   		return modelMap;
+   	}
+   @RequestMapping(value = "/modifyproduct", method = RequestMethod.POST)
+   	@ResponseBody
+   	private Map<String, Object> modifyProduct(HttpServletRequest request) {
+   		// 获取是下架操作还是编辑商品信息操作
+   		boolean statusChange = HttpServletRequestUtil.getBoolean(request, "statusChange");
+   		Map<String, Object> modelMap = new HashMap<String, Object>();
+   		// 验证码判断
+   		if (!statusChange && !CodeUtil.checkVerifyCode(request)) {
+   			modelMap.put("success", false);
+   			modelMap.put("errMsg", "输入了错误的验证码");
+   			return modelMap;
+   		}
+   		// 接收前端的数据以及商品信息
+   		ObjectMapper mapper = new ObjectMapper();
+   		Product product = null;
+   		ImageHolder thumbnail = null;
+   		List<ImageHolder> productImgList = new ArrayList<ImageHolder>();
+   		CommonsMultipartResolver multipartResolver = new CommonsMultipartResolver(
+   				request.getSession().getServletContext());
+   
+   		// 图片操作
+   		try {
+   			// 判断是否有文件流
+   			if (multipartResolver.isMultipart(request)) {
+   				thumbnail = handleImage(request, thumbnail, productImgList);
+   			}
+   		} catch (Exception e) {
+   			modelMap.put("success", false);
+   			modelMap.put("errMsg", e.toString());
+   			return modelMap;
+   		}
+   		// 商品信息操作
+   		try {
+   			String productStr = HttpServletRequestUtil.getString(request, "productStr");
+   			product = mapper.readValue(productStr, Product.class);
+   		} catch (Exception e) {
+   			modelMap.put("success", false);
+   			modelMap.put("errMsg", e.toString());
+   			return modelMap;
+   		}
+   		// 非空判断
+   		if (product != null) {
+   			try {
+   				// 从前端获取product
+   				Shop currentShop = (Shop) request.getSession().getAttribute("currentShop");
+   				product.setShop(currentShop);
+   				ProductExecution pe = productService.modifyProduct(product, thumbnail, productImgList);
+   				if (pe.getState() == ProductStateEnum.SUCCESS.getState()) {
+   					modelMap.put("success", true);
+   				} else {
+   					modelMap.put("success", false);
+   					modelMap.put("errMsg", pe.getStateInfo());
+   				}
+   			} catch (RuntimeException e) {
+   				modelMap.put("success", false);
+   				modelMap.put("errMsg", e.toString());
+   				return modelMap;
+   			}
+   
+   		} else {
+   			modelMap.put("success", false);
+   			modelMap.put("errMsg", "请输入商品信息");
+   		}
+   		return modelMap;
+   	}
+   
+   @RequestMapping(value = "/modifyproduct", method = RequestMethod.POST)
+   	@ResponseBody
+   	private Map<String, Object> modifyProduct(HttpServletRequest request) {
+   		// 获取是下架操作还是编辑商品信息操作
+   		boolean statusChange = HttpServletRequestUtil.getBoolean(request, "statusChange");
+   		Map<String, Object> modelMap = new HashMap<String, Object>();
+   		// 验证码判断
+   		if (!statusChange && !CodeUtil.checkVerifyCode(request)) {
+   			modelMap.put("success", false);
+   			modelMap.put("errMsg", "输入了错误的验证码");
+   			return modelMap;
+   		}
+   		// 接收前端的数据以及商品信息
+   		ObjectMapper mapper = new ObjectMapper();
+   		Product product = null;
+   		ImageHolder thumbnail = null;
+   		List<ImageHolder> productImgList = new ArrayList<ImageHolder>();
+   		CommonsMultipartResolver multipartResolver = new CommonsMultipartResolver(
+   				request.getSession().getServletContext());
+   
+   		// 图片操作
+   		try {
+   			// 判断是否有文件流
+   			if (multipartResolver.isMultipart(request)) {
+   				thumbnail = handleImage(request, thumbnail, productImgList);
+   			}
+   		} catch (Exception e) {
+   			modelMap.put("success", false);
+   			modelMap.put("errMsg", e.toString());
+   			return modelMap;
+   		}
+   		// 商品信息操作
+   		try {
+   			String productStr = HttpServletRequestUtil.getString(request, "productStr");
+   			product = mapper.readValue(productStr, Product.class);
+   		} catch (Exception e) {
+   			modelMap.put("success", false);
+   			modelMap.put("errMsg", e.toString());
+   			return modelMap;
+   		}
+   		// 非空判断
+   		if (product != null) {
+   			try {
+   				// 从前端获取product
+   				Shop currentShop = (Shop) request.getSession().getAttribute("currentShop");
+   				product.setShop(currentShop);
+   				ProductExecution pe = productService.modifyProduct(product, thumbnail, productImgList);
+   				if (pe.getState() == ProductStateEnum.SUCCESS.getState()) {
+   					modelMap.put("success", true);
+   				} else {
+   					modelMap.put("success", false);
+   					modelMap.put("errMsg", pe.getStateInfo());
+   				}
+   			} catch (RuntimeException e) {
+   				modelMap.put("success", false);
+   				modelMap.put("errMsg", e.toString());
+   				return modelMap;
+   			}
+   
+   		} else {
+   			modelMap.put("success", false);
+   			modelMap.put("errMsg", "请输入商品信息");
+   		}
+   		return modelMap;
+   	}
+   ```
+
+### （Eclipse技巧）快速提取重复的代码成为一个函数
+
+> 我们在敲代码的时候经常会意识到自己敲了重复的代码，所以这里我们通过eclipse的一个小功能快速提取重复的代码成为一个函数
+
+1. 选中代码右击->Refactor->Extract Method
+
+   ![](https://ws1.sinaimg.cn/large/006bBmqIgy1g4ht5hr6cyj30ry0kzq57.jpg)
+
+2. 输入方法名，点击ok即可生成方法
+
+   ![](https://ws1.sinaimg.cn/large/006bBmqIgy1g4ht6vhuluj30do0fkt8w.jpg)

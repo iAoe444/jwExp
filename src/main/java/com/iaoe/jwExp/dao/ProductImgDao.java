@@ -19,4 +19,11 @@ public interface ProductImgDao {
 	 * @return
 	 */
 	int deleteProductImgByProductId(long productId);
+	
+	/**
+	 * 通过productId来查询所有的商品详情图
+	 * @param productId
+	 * @return
+	 */
+	List<ProductImg> queryProductImgList(long productId);
 }

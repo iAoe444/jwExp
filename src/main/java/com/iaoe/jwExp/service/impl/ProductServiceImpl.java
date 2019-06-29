@@ -105,4 +105,64 @@ public class ProductServiceImpl implements ProductService{
 		}
 	}
 
+	@Override
+	public Product getProductById(long productId) {
+		return productDao.queryProductById(productId);
+	}
+
+	// 1.若缩略图参数有值，则处理缩略图，若原先存在缩略图则先删除再添加新图，之后获取缩略图相对路径并赋值给product
+	// 2.若商品详情图列表参数有值，对商品详情图片列表进行同样的操作
+	// 3.将tb_product_img下面的该商品原先的商品详情图记录全部清除
+	// 4.更新tb_product_img和tb_product的信息
+	@Override
+	public ProductExecution modifyProduct(Product product, ImageHolder thumbnail, List<ImageHolder> productImgList)
+			throws ProductOperationException {
+		//空值判断
+		if (product != null && product.getShop() != null && product.getShop().getShopId() != null) {
+			//更新时间
+			product.setLastEditTime(new Date());
+			//如果商品缩略图不为空
+			if (thumbnail != null) {
+				// 查询这个product
+				Product tempProduct = productDao.queryProductById(product.getProductId());
+				if (tempProduct.getImgAddr() != null) {
+					//删除图片
+					ImageUtil.deleteFileOrPath(tempProduct.getImgAddr());
+				}
+				//添加图片
+				addThumbnail(product, thumbnail);
+			}
+			//如果有商品详情图传入
+			if (productImgList != null && productImgList.size() > 0) {
+				//删除图片
+				deleteProductImgList(product.getProductId());
+				//添加图片
+				addProductImgs(product, productImgList);
+			}
+			try {
+				int effectedNum = productDao.updateProduct(product);
+				if (effectedNum <= 0) {
+					throw new RuntimeException("更新商品信息失败");
+				}
+				return new ProductExecution(ProductStateEnum.SUCCESS, product);
+			} catch (Exception e) {
+				throw new RuntimeException("更新商品信息失败:" + e.toString());
+			}
+		} else {
+			return new ProductExecution(ProductStateEnum.EMPTY);
+		}
+	}
+	
+	//删除图片操作
+	private void deleteProductImgList(long productId) {
+		// 根据productId查询所有的图片
+		List<ProductImg> productImgList = productImgDao.queryProductImgList(productId);
+		//删除所有的图片
+		for (ProductImg productImg : productImgList) {
+			ImageUtil.deleteFileOrPath(productImg.getImgAddr());
+		}
+		//数据库删除所有图片
+		productImgDao.deleteProductImgByProductId(productId);
+	}
+
 }
