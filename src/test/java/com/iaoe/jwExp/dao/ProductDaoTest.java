@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.util.Date;
 
+import org.junit.Ignore;
 import org.junit.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -17,6 +18,7 @@ public class ProductDaoTest extends BaseTest{
 	private ProductDao productDao;
 	
 	@Test
+	@Ignore
 	public void testAInsertProduct() throws Exception {
 		Shop shop1 = new Shop();
 		shop1.setShopId(2L);
@@ -34,5 +36,23 @@ public class ProductDaoTest extends BaseTest{
 		product1.setProductCategory(pc1);
 		int effectedNum = productDao.insertProduct(product1);
 		assertEquals(1, effectedNum);
+	}
+	
+	@Test
+	@Ignore
+	public void testBQueryProductByProductId() throws Exception{
+		Product product = productDao.queryProductById(1L);
+		assertEquals(3, product.getProductImgList().size());
+	}
+	
+	@Test
+	public void testCUpdateProduct() throws Exception{
+		Product product = new Product();
+		Shop shop = new Shop();
+		shop.setShopId(8L);
+		product.setShop(shop);
+		product.setProductId(1L);
+		product.setProductName("我换了个名字");
+		productDao.updateProduct(product);
 	}
 }

@@ -7,6 +7,7 @@ import java.util.Date;
 import java.util.List;
 
 import org.junit.FixMethodOrder;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,7 @@ public class ProductImgDaoTest extends BaseTest {
 	private ProductImgDao productImgDao;
 
 	@Test
+	@Ignore
 	public void testABatchInsertProductImg() throws Exception {
 		ProductImg productImg1 = new ProductImg();
 		productImg1.setImgAddr("图片1");
@@ -36,6 +38,13 @@ public class ProductImgDaoTest extends BaseTest {
 		productImgList.add(productImg1);
 		productImgList.add(productImg2);
 		int effectedNum = productImgDao.batchInsertProductImg(productImgList);
+		assertEquals(2, effectedNum);
+	}
+	
+	@Test
+	public void testBDeleteProductImgByProductId() throws Exception {
+		long productId = 7;
+		int effectedNum = productImgDao.deleteProductImgByProductId(productId);
 		assertEquals(2, effectedNum);
 	}
 }

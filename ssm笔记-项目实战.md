@@ -3716,4 +3716,186 @@ $(function() {
    	}
    ```
 
+### （一对多的实现）Dao层实现商品编辑功能
+
+> 在商品编辑功能中，需要用到更新商品功能，通过商品Id查询商品功能，删除商品的所有详情图来达到换图片的效果
+
+1. Dao层的`ProdcutDao`查询商品和更新商品的接口
+
+   ```java
+   	/**
+   	 * 通过ProductId查询唯一的商品信息
+   	 * @param productId
+   	 * @return
+   	 */
+   	Product queryProductById(long productId);
+   	
+   	/**
+   	 * 更新商品信息
+   	 * @param product
+   	 * @return
+   	 */
+   	int updateProduct(Product product);
+   ```
+
+   **（一对多的实现）**mapper`prodcutDao`实现这个接口，其中由于商品和图片是一对多的关系，所有在符合对象里面使用collection，查询商品的时候使用左联接图片的操作
+
+   ```xml
+   <!-- 复合对象 -->
+   	<resultMap id="productMap"
+   		type="com.iaoe.jwExp.entity.Product">
+   		<id column="product_id" property="productId" />
+   		<result column="product_name" property="productName" />
+   		<result column="product_desc" property="productDesc" />
+   		<result column="img_addr" property="imgAddr" />
+   		<result column="normal_price" property="normalPrice" />
+   		<result column="promotion_price" property="promotionPrice" />
+   		<result column="priority" property="priority" />
+   		<result column="create_time" property="createTime" />
+   		<result column="last_edit_time" property="lastEditTime" />
+   		<result column="enable_status" property="enableStatus" />
+   		<association property="productCategory"
+   			column="product_category_id"
+   			javaType="com.iaoe.jwExp.entity.ProductCategory">
+   			<id column="product_category_id" property="productCategoryId" />
+   			<result column="product_category_name"
+   				property="productCategoryName" />
+   		</association>
+   		<association property="shop" column="shop_id"
+   			javaType="com.iaoe.jwExp.entity.Shop">
+   			<id column="shop_id" property="shopId" />
+   			<result column="owner_id" property="ownerId" />
+   			<result column="shop_name" property="shopName" />
+   		</association>
+   		<!-- 一对多的实现 -->
+   		<collection property="productImgList" column="product_id"
+   			ofType="com.iaoe.jwExp.entity.ProductImg">
+   			<id column="product_img_id" property="productImgId" />
+   			<result column="img_addr" property="imgAddr" />
+   			<result column="img_desc" property="imgDesc" />
+   			<result column="priority" property="priority" />
+   			<result column="create_time" property="createTime" />
+   			<result column="product_id" property="productId" />
+   		</collection>
+   	</resultMap>
+   
+   <!-- 通过id查询商品 -->
+   	<select id="queryProductById" resultMap="productMap"
+   		parameterType="Long">
+   		<!-- 具体的sql -->
+   		SELECT
+   		p.product_id,
+   		p.product_name,
+   		p.product_desc,
+   		p.img_addr,
+   		p.normal_price,
+   		p.promotion_price,
+   		p.priority,
+   		p.create_time,
+   		p.last_edit_time,
+   		p.enable_status,
+   		p.product_category_id,
+   		p.shop_id,
+   		pm.product_img_id,
+   		pm.img_addr,
+   		pm.img_desc,
+   		pm.priority,
+   		pm.create_time
+   		FROM
+   		tb_product p
+   		LEFT JOIN
+   		tb_product_img pm
+   		ON
+   		p.product_id =
+   		pm.product_id
+   		WHERE
+   		p.product_id =
+   		#{productId}
+   		ORDER BY
+   		pm.priority DESC
+   	</select>
+   
+   	<!-- 更新商品操作 -->
+   	<update id="updateProduct"
+   		parameterType="com.iaoe.jwExp.entity.Product"
+   		keyProperty="product_id" useGeneratedKeys="true">
+   		UPDATE tb_product
+   		<set>
+   			<if test="productName != null">product_name=#{productName},</if>
+   			<if test="productDesc != null">product_desc=#{productDesc},</if>
+   			<if test="imgAddr != null">img_addr=#{imgAddr},</if>
+   			<if test="normalPrice != null">normal_price=#{normalPrice},</if>
+   			<if test="promotionPrice != null">promotion_price=#{promotionPrice},</if>
+   			<if test="priority != null">priority=#{priority},</if>
+   			<if test="lastEditTime != null">last_edit_time=#{lastEditTime},</if>
+   			<if test="enableStatus != null">enable_status=#{enableStatus},</if>
+   			<if
+   				test="productCategory != null
+   				 and productCategory.productCategoryId != null">
+   				product_category_id=#{productCategory.productCategoryId}
+   			</if>
+   		</set>
+   		WHERE product_id = #{productId}
+   		AND shop_id=#{shop.shopId}
+   	</update>
+   ```
+
+2. Dao层的`ProdcutImgDao`删除图片操作
+
+   ```java
+   	
+   	/**
+   	 * 删除指定商品下的所有详情图
+   	 * @param productId
+   	 * @return
+   	 */
+   	int deleteProductImgByProductId(long productId);
+   ```
+
+   mapper层`ProductImgDao`实现这个接口
+
+   ```xml
+   	<delete id="deleteProductImgByProductId">
+   		<!-- 具体的sql -->
+   		DELETE FROM
+   		tb_product_img
+   		WHERE
+   		product_id =
+   		#{productId}
+   	</delete>
+   ```
+
+3. 使用junit`ProductDaoTest`测试这两个接口
+
+   ```java
+   	@Test
+   	@Ignore
+   	public void testBQueryProductByProductId() throws Exception{
+   		Product product = productDao.queryProductById(1L);
+   		assertEquals(3, product.getProductImgList().size());
+   	}
+   	
+   	@Test
+   	public void testCUpdateProduct() throws Exception{
+   		Product product = new Product();
+   		Shop shop = new Shop();
+   		shop.setShopId(8L);
+   		product.setShop(shop);
+   		product.setProductId(1L);
+   		product.setProductName("我换了个名字");
+   		productDao.updateProduct(product);
+   	}
+   ```
+
+4. 使用junit`productImgDaoTest`测试接口
+
+   ```java
+   	@Test
+   	public void testBDeleteProductImgByProductId() throws Exception {
+   		long productId = 7;
+   		int effectedNum = productImgDao.deleteProductImgByProductId(productId);
+   		assertEquals(2, effectedNum);
+   	}
+   ```
+
    
