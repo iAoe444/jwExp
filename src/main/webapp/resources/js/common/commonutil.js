@@ -1,6 +1,4 @@
-/**
- * 
- */
+//日期按格式化输出
 Date.prototype.Format = function(fmt) {
 	var o = {
 		"M+" : this.getMonth() + 1, // 月份
@@ -22,7 +20,7 @@ Date.prototype.Format = function(fmt) {
 	return fmt;
 }
 
-//根据url获取参数名后取它的值，例如?shopId=1，那么就会返回1
+// 根据url获取参数名后取它的值，例如?shopId=1，那么就会返回1
 function getQueryString(name) {
 	var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)");
 	var r = window.location.search.substr(1).match(reg);
@@ -32,6 +30,6 @@ function getQueryString(name) {
 	return '';
 }
 function changeVerifyCode(img) {
-	//生成随机数
+	// 生成随机数
 	img.src = "../Kaptcha?" + Math.floor(Math.random() * 100);
 }

@@ -4531,4 +4531,352 @@ $(function() {
 
    ![1561780428698](assets/1561780428698.png)
 
+### 店铺列表与搜索功能的前后端实现
+
+> 这里需要完成两个功能，一个是获取区域信息和某个分类下的所有分类信息，另一个是获取特定搜索条件下的店铺信息
+
+1. 由于之前的`shopDao`没有通过从某个父分类获取所有分类的操作，所以这里要修改一下mapper层的`shopDao`
+
+   ```xml
+   				#{shopCondition.shopCategory.shopCategoryId}
+   			</if>
+   			<!--+++++++++++++++++++++++++++++++++-->
+   			<if
+   				test="shopCondition.shopCategory!=null
+   				 and shopCondition.shopCategory.parent!=null
+   				 and shopCondition.shopCategory.parent.shopCategoryId!=null">
+   				and s.shop_category_id in (select shop_category_id from
+   				tb_shop_category
+   				WHERE parent_id =
+   				#{shopCondition.shopCategory.parent.shopCategoryId})
+   			</if>
+   			<!--+++++++++++++++++++++++++++++++++-->
+   			<if
+   				test="shopCondition.area!=null
+   				 and shopCondition.area.areaId!=null">
+   				and s.area_id =
+   ```
+
+2. 接着我们实现第一个功能也就是获取区域信息和某个分类下的所有分类信息的功能，在`ShopListController`中实现
+
+   ```java
+   /**
+   	 * 根据shopCategory返回商品信息列表，包括一级和二级列表
+   	 * 
+   	 * @param request
+   	 * @return
+   	 */
+   	@RequestMapping(value = "/listshopspageinfo", method = RequestMethod.GET)
+   	@ResponseBody
+   	private Map<String, Object> listShopsPageInfo(HttpServletRequest request) {
+   		Map<String, Object> modelMap = new HashMap<String, Object>();
+   		// 从前端获取parentId
+   		long parentId = HttpServletRequestUtil.getLong(request, "parentId");
+   		List<ShopCategory> shopCategoryList = null;
+   		if (parentId != -1) {
+   			// 如果parentId存在，那么就取出ShopCategory下的所有二级列表
+   			try {
+   				ShopCategory shopCategoryCondition = new ShopCategory();
+   				ShopCategory parent = new ShopCategory();
+   				parent.setShopCategoryId(parentId);
+   				shopCategoryCondition.setParent(parent);
+   				shopCategoryList = shopCategoryService.getShopCategoryList(shopCategoryCondition);
+   			} catch (Exception e) {
+   				modelMap.put("success", false);
+   				modelMap.put("errMsg", e.toString());
+   			}
+   		} else {
+   			try {
+   				shopCategoryList = shopCategoryService.getShopCategoryList(null);
+   			} catch (Exception e) {
+   				modelMap.put("success", false);
+   				modelMap.put("errMsg", e.toString());
+   			}
+   		}
+   		modelMap.put("shopCategoryList", shopCategoryList);
+   		List<Area> areaList = null;
+   		try {
+   			// 获取区域列表信息
+   			areaList = areaService.getAreaList();
+   			modelMap.put("areaList", areaList);
+   			modelMap.put("success", true);
+   			return modelMap;
+   		} catch (Exception e) {
+   			modelMap.put("success", false);
+   			modelMap.put("errMsg", e.toString());
+   		}
+   		return modelMap;
+   	}
+   ```
+   
+3. 接着是实现商品列表的查询功能
+   
+   ```java
+   	/**
+   	 * 获取指定条件的查询列表
+   	 * 
+   	 * @param request
+   	 * @return
+   	 */
+   	@RequestMapping(value = "/listshops", method = RequestMethod.GET)
+   	@ResponseBody
+   	private Map<String, Object> listShops(HttpServletRequest request) {
+   		Map<String, Object> modelMap = new HashMap<String, Object>();
+   		// 获取页码
+   		int pageIndex = HttpServletRequestUtil.getInt(request, "pageIndex");
+   		// 获取一页需要显示的数据量
+   		int pageSize = HttpServletRequestUtil.getInt(request, "pageSize");
+   		// 空值判断
+   		if ((pageIndex > -1) && (pageSize > -1)) {
+   			// 获取一级类别Id
+   			long parentId = HttpServletRequestUtil.getLong(request, "parentId");
+   			// 获取特定二级类别Id
+   			long shopCategoryId = HttpServletRequestUtil.getLong(request, "shopCategoryId");
+   			// 获取区域Id
+   			int areaId = HttpServletRequestUtil.getInt(request, "areaId");
+   			// 获取店铺模糊名
+   			String shopName = HttpServletRequestUtil.getString(request, "shopName");
+   			Shop shopCondition = compactShopCondition4Search(parentId, shopCategoryId, areaId, shopName);
+   			// 根据查询条件和分页信息获取店铺列表和总数
+   			ShopExecution se = shopService.getShopList(shopCondition, pageIndex, pageSize);
+   			modelMap.put("shopList", se.getShopList());
+   			modelMap.put("count", se.getCount());
+   			modelMap.put("success", true);
+   		} else {
+   			modelMap.put("success", false);
+   			modelMap.put("errMsg", "empty pageSize or pageIndex");
+   		}
+   		return modelMap;
+   	}
+   
+   	private Shop compactShopCondition4Search(long parentId, long shopCategoryId, int areaId, String shopName) {
+   		Shop shopCondition = new Shop();
+   		if (parentId != -1L) {
+   			// 查询parentId
+   			ShopCategory childCategory = new ShopCategory();
+   			ShopCategory parentCategory = new ShopCategory();
+   			parentCategory.setShopCategoryId(parentId);
+   			childCategory.setParent(parentCategory);
+   			shopCondition.setShopCategory(childCategory);
+   		}
+   		if (shopCategoryId != -1L) {
+   			// 查询二级标签
+   			ShopCategory shopCategory = new ShopCategory();
+   			shopCategory.setShopCategoryId(shopCategoryId);
+   			shopCondition.setShopCategory(shopCategory);
+   		}
+   		if (areaId != -1L) {
+   			Area area = new Area();
+   			area.setAreaId(Integer.valueOf(areaId));
+   			shopCondition.setArea(area);
+   		}
+   
+   		if (shopName != null) {
+   			shopCondition.setShopName(shopName);
+   		}
+   		// 全部都是审核成功的店铺
+   		shopCondition.setEnableStatus(1);
+   		return shopCondition;
+   	}
+   
+   ```
+   
+4.  然后就是html页面`jwExp\src\main\webapp\WEB-INF\html\frontend\shoplist.html`，可以从git中查看，然后就是我们的`shoplist.js`
+   
+   ```java
+   $(function() {
+   	var loading = false;
+   	// 允许返回的最大条数
+   	var maxItems = 999;
+   	// 单页最多的数量
+   	var pageSize = 1;
+   	// 查询的url
+   	var listUrl = '/jwExp/frontend/listshops';
+   	// 获取区域和店铺列表的url
+   	var searchDivUrl = '/jwExp/frontend/listshopspageinfo';
+   	// 页码
+   	var pageNum = 1;
+   	var parentId = getQueryString('parentId');
+   	var areaId = '';
+   	var shopCategoryId = '';
+   	var shopName = '';
+   
+   	// 初始化渲染页面
+   	getSearchDivData();
+   	// 预先加载10条店铺信息
+   	addItems(pageSize, pageNum);
+   
+   	/**
+   	 * 获取店铺分类和店铺的分类
+   	 */
+   	function getSearchDivData() {
+   		// 这里有两种情况一种是parentId为空，一种是不为空
+   		var url = searchDivUrl + '?' + 'parentId=' + parentId;
+   		$
+   				.getJSON(
+   						url,
+   						function(data) {
+   							if (data.success) {
+   								// 遍历拼接
+   								var shopCategoryList = data.shopCategoryList;
+   								var html = '';
+   								// 将类别渲染进去
+   								html += '<a href="#" class="button" data-category-id=""> 全部类别  </a>';
+   								shopCategoryList
+   										.map(function(item, index) {
+   											html += '<a href="#" class="button" data-category-id='
+   													+ item.shopCategoryId
+   													+ '>'
+   													+ item.shopCategoryName
+   													+ '</a>';
+   										});
+   								$('#shoplist-search-div').html(html);
+   								var selectOptions = '<option value="">全部区域</option>';
+   								var areaList = data.areaList;
+   								areaList.map(function(item, index) {
+   									selectOptions += '<option value="'
+   											+ item.areaId + '">'
+   											+ item.areaName + '</option>';
+   								});
+   								// 将区域渲染进去
+   								$('#area-search').html(selectOptions);
+   							}
+   						});
+   	}
+   
+   	/**
+   	 * 获取分页展示的所有店铺信息
+   	 */
+   	function addItems(pageSize, pageIndex) {
+   		// 生成新条目的HTML
+   		var url = listUrl + '?' + 'pageIndex=' + pageIndex + '&pageSize='
+   				+ pageSize + '&parentId=' + parentId + '&areaId=' + areaId
+   				+ '&shopCategoryId=' + shopCategoryId + '&shopName=' + shopName;
+   		loading = true;
+   		$.getJSON(url, function(data) {
+   			if (data.success) {
+   				maxItems = data.count;
+   				var html = '';
+   				// 遍历添加商品信息
+   				data.shopList.map(function(item, index) {
+   					html += '' + '<div class="card" data-shop-id="'
+   							+ item.shopId + '">' + '<div class="card-header">'
+   							+ item.shopName + '</div>'
+   							+ '<div class="card-content">'
+   							+ '<div class="list-block media-list">' + '<ul>'
+   							+ '<li class="item-content">'
+   							+ '<div class="item-media">' + '<img src="'
+   							+ item.shopImg + '" width="44">' + '</div>'
+   							+ '<div class="item-inner">'
+   							+ '<div class="item-subtitle">' + item.shopDesc
+   							+ '</div>' + '</div>' + '</li>' + '</ul>'
+   							+ '</div>' + '</div>' + '<div class="card-footer">'
+   							+ '<p class="color-gray">'
+   							+ new Date(item.lastEditTime).Format("yyyy-MM-dd")
+   							+ '更新</p>' + '<span>点击查看</span>' + '</div>'
+   							+ '</div>';
+   				});
+   				$('.list-div').append(html);
+   				// 获取总数
+   				var total = $('.list-div .card').length;
+   				if (total >= maxItems) {
+   					// 加载完毕，则注销无限加载事件，以防不必要的加载
+   					$.detachInfiniteScroll($('.infinite-scroll'));
+   					// 删除加载提示符
+   					$('.infinite-scroll-preloader').remove();
+   				}
+   				// 还没有达到上限的时候，还可以无限滚动
+   				pageNum += 1;
+   				loading = false;
+   				$.refreshScroller();
+   			}
+   		});
+   	}
+   
+   	// 下滑屏幕自动进行分页搜索
+   	$(document).on('infinite', '.infinite-scroll-bottom', function() {
+   		if (loading)
+   			return;
+   		addItems(pageSize, pageNum);
+   	});
+   
+   	// 点击某个店铺就到某个店铺的详情里面去
+   	$('.shop-list').on('click', '.card', function(e) {
+   		var shopId = e.currentTarget.dataset.shopId;
+   		window.location.href = '/jwExp/frontend/shopdetail?shopId=' + shopId;
+   	});
+   
+   	// 选择新的店铺类别后，重置页面，清空原先的店铺列表，按新的类别去查询
+   	$('#shoplist-search-div').on(
+   			'click',
+   			'.button',
+   			function(e) {
+   				if (parentId) {// 如果传递过来的是一个父类下的子类
+   					shopCategoryId = e.target.dataset.categoryId;
+   					if ($(e.target).hasClass('button-fill')) {
+   						$(e.target).removeClass('button-fill');
+   						shopCategoryId = '';
+   					} else {
+   						$(e.target).addClass('button-fill').siblings()
+   								.removeClass('button-fill');
+   					}
+   					$('.list-div').empty();
+   					pageNum = 1;
+   					addItems(pageSize, pageNum);
+   				} else {// 如果传递过来的父类为空，则按照父类查询
+   					parentId = e.target.dataset.categoryId;
+   					if ($(e.target).hasClass('button-fill')) {
+   						$(e.target).removeClass('button-fill');
+   						parentId = '';
+   					} else {
+   						$(e.target).addClass('button-fill').siblings()
+   								.removeClass('button-fill');
+   					}
+   					$('.list-div').empty();
+   					pageNum = 1;
+   					addItems(pageSize, pageNum);
+   					parentId = '';
+   				}
+   
+   			});
+   
+   	// 店铺名字如果改变，则清空设置名称
+   	$('#search').on('input', function(e) {
+   		shopName = e.target.value;
+   		$('.list-div').empty();
+   		pageNum = 1;
+   		addItems(pageSize, pageNum);
+   	});
+   
+   	// 获取选择的区域
+   	$('#area-search').on('change', function() {
+   		areaId = $('#area-search').val();
+   		$('.list-div').empty();
+   		pageNum = 1;
+   		addItems(pageSize, pageNum);
+   	});
+   
+   	$('#me').click(function() {
+   		$.openPanel('#panel-left-demo');
+   	});
+   
+   	$.init();
+   });
+   ```
+   
+ 5. 最后我们在路由`FrontEndController.java`里面注册我们的controller
+
+    ```java
+    	/**
+    	 * 店铺列表功能
+    	 * @return
+    	 */
+    	@RequestMapping(value = "/shoplist", method = RequestMethod.GET)
+    	private String shopList() {
+    		return "frontend/shoplist";
+    	}
+    ```
+
+    
+
    
