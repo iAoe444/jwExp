@@ -31,11 +31,11 @@ public class FrontEndController {
 	}
 	
 	/**
-	 * 登录功能
+	 * 店铺列表功能
 	 * @return
 	 */
-	@RequestMapping(value = "/login", method = RequestMethod.GET)
-	private String login() {
-		return "frontend/login";
+	@RequestMapping(value = "/productdetail", method = RequestMethod.GET)
+	private String productDetail() {
+		return "frontend/productdetail";
 	}
 }

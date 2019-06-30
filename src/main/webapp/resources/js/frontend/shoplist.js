@@ -3,7 +3,7 @@ $(function() {
 	// 允许返回的最大条数
 	var maxItems = 999;
 	// 单页最多的数量
-	var pageSize = 10;
+	var pageSize = 3;
 	// 查询的url
 	var listUrl = '/jwExp/frontend/listshops';
 	// 获取区域和店铺列表的url
@@ -20,6 +20,8 @@ $(function() {
 	// 预先加载10条店铺信息
 	addItems(pageSize, pageNum);
 
+	ifLogin();
+	
 	/**
 	 * 获取店铺分类和店铺的分类
 	 */

@@ -1,7 +1,7 @@
 $(function() {
 	var loading = false;
 	var maxItems = 20;
-	var pageSize = 10;
+	var pageSize = 3;
 
 	var listUrl = '/jwExp/frontend/listproductsbyshop';
 
@@ -13,6 +13,8 @@ $(function() {
 	var searchDivUrl = '/jwExp/frontend/listshopdetailpageinfo?shopId='
 			+ shopId;
 
+	ifLogin();
+	
 	function getSearchDivData() {
 		var url = searchDivUrl;
 		$
@@ -25,10 +27,10 @@ $(function() {
 								$('#shop-update-time').html(
 										new Date(shop.lastEditTime)
 												.Format("yyyy-MM-dd"));
-								$('#shop-name').html(shop.shopName);
-								$('#shop-desc').html(shop.shopDesc);
-								$('#shop-addr').html(shop.shopAddr);
-								$('#shop-phone').html(shop.phone);
+								$('#shop-name').html("商店名：" + shop.shopName);
+								$('#shop-desc').html("商店描述：" + shop.shopDesc);
+								$('#shop-addr').html("商店地址：" +shop.shopAddr);
+								$('#shop-phone').html("店家电话：" +shop.phone);
 
 								var productCategoryList = data.productCategoryList;
 								var html = '';
@@ -65,9 +67,9 @@ $(function() {
 							+ '<li class="item-content">'
 							+ '<div class="item-media">' + '<img src="'
 							+ item.imgAddr + '" width="44">' + '</div>'
-							+ '<div class="item-inner">'
+							+ '<div class="item-detail">'
 							+ '<div class="item-subtitle">' + item.productDesc
-							+ '</div>' + '</div>' + '</li>' + '</ul>'
+							+ '</div>' + '<div>现价:'+ item.promotionPrice +' </div></div>' + '</li>' + '</ul>'
 							+ '</div>' + '</div>' + '<div class="card-footer">'
 							+ '<p class="color-gray">'
 							+ new Date(item.lastEditTime).Format("yyyy-MM-dd")

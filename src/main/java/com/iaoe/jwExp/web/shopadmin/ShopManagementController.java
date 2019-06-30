@@ -199,8 +199,8 @@ public class ShopManagementController {
 		}
 		//2.注册店铺功能
 		if(shopImg!=null && shop!=null) {
-			PersonInfo owner = new PersonInfo();
-			owner.setUserId(1L);
+			PersonInfo owner = (PersonInfo) request.getSession().getAttribute("user");
+			System.out.println("------------------"+ owner.getUserId());
 			shop.setOwner(owner);
 			ShopExecution se;
 			try {

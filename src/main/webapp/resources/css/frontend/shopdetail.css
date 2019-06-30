@@ -18,3 +18,10 @@
     margin: 1%;
     overflow: hidden;
 }
+.item-detail {
+	display: flex;
+	position: relative;
+	width: 100%;
+	justify-content: space-between;
+	padding-right: 15px;
+}

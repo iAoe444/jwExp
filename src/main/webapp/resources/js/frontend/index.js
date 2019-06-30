@@ -1,6 +1,8 @@
 $(function() {
 	var url = '/jwExp/frontend/listmainpageinfo';
 
+	ifLogin();
+	
 	$.getJSON(url, function(data) {
 		// 获取初始化信息
 		if (data.success) {
@@ -8,9 +10,10 @@ $(function() {
 			var swiperHtml = '';
 			// 渲染头条信息
 			headLineList.map(function(item, index) {
-				swiperHtml += '' + '<div class="swiper-slide img-wrap">'
+				swiperHtml += '' + '<div class="swiper-slide img-wrap" onclick="headline(this)" data-link="'
+						+ item.lineLink +'">'
 						+ '<img class="banner-img" src="' + item.lineImg
-						+ '" alt="' + item.lineName + '">' + '</div>';
+						+ '" alt="' + item.lineName + '">' + '</a></div>';
 			});
 			// 置入头条
 			$('.swiper-wrapper').html(swiperHtml);
@@ -29,7 +32,7 @@ $(function() {
 						+ '</p>' + '<p class="shop-desc">'
 						+ item.shopCategoryDesc + '</p>' + '</div>'
 						+ '<div class="shop-classify-img-warp">'
-						+ '<img class="shop-img" src="' + item.shopCategoryImg
+						+ '<img class="shop-img" id="head" src="' + item.shopCategoryImg
 						+ '">' + '</div>' + '</div>';
 			});
 			$('.row').html(categoryHtml);
@@ -47,5 +50,10 @@ $(function() {
 		var newUrl = '/jwExp/frontend/shoplist?parentId=' + shopCategoryId;
 		window.location.href = newUrl;
 	});
-
+	
 });
+
+function headline(e){
+	var link = $(e)[0].dataset.link;
+	window.location.href = link;
+}

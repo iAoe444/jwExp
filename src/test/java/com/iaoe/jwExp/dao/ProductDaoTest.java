@@ -39,13 +39,15 @@ public class ProductDaoTest extends BaseTest{
 	}
 	
 	@Test
-	@Ignore
 	public void testBQueryProductByProductId() throws Exception{
-		Product product = productDao.queryProductById(1L);
+		Product product = productDao.queryProductById(11L);
+		System.out.println(product.getProductImgList().get(0).getImgAddr());
+		System.out.println(product.getProductImgList().get(1).getImgAddr());
 		assertEquals(3, product.getProductImgList().size());
 	}
 	
 	@Test
+	@Ignore
 	public void testCUpdateProduct() throws Exception{
 		Product product = new Product();
 		Shop shop = new Shop();

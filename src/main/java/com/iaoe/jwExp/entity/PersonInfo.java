@@ -11,8 +11,22 @@ public class PersonInfo {
 	private Integer enableStaus;
 	//用户身份	1.顾客	2.	店家		3.超级管理员
 	private Integer userType;
+	private String userName;
+	private String password;
 	private Date createTime;
 	private Date lastEditTime;
+	public String getUserName() {
+		return userName;
+	}
+	public void setUserName(String userName) {
+		this.userName = userName;
+	}
+	public String getPassword() {
+		return password;
+	}
+	public void setPassword(String password) {
+		this.password = password;
+	}
 	public Long getUserId() {
 		return userId;
 	}

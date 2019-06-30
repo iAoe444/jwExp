@@ -33,3 +33,19 @@ function changeVerifyCode(img) {
 	// 生成随机数
 	img.src = "../Kaptcha?" + Math.floor(Math.random() * 100);
 }
+
+function ifLogin(){
+	var ifLoginUrl = '/jwExp/person/iflogin';
+	$.getJSON(ifLoginUrl,function(data){
+		var html = '';
+		if(data.login){
+			html ='<p><a href="#" class="close-panel">你好，'+data.userName+'</a></p>' 
+				+ '<p><a href="/jwExp/shopadmin/shoplist" class="close-panel">管理我的商店</a></p>'
+				+ '<p><a href="#" class="close-panel">退出</a></p>'
+			$('.panel').html(html);
+		}else{
+			html = '<p><a href="/jwExp/personadmin/login" class="close-panel">登录</a></p>'
+			$('.panel').html(html);
+		}
+	});
+}

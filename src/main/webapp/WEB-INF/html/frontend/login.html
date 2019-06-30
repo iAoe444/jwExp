@@ -16,6 +16,10 @@
 <body>
 	<header class="bar bar-nav">
 		<h1 class="title">登录</h1>
+		<a class="button button-link button-nav pull-left" external href="#"
+			onClick="javascript :history.back(-1);" data-transition='slide-out'>
+			<span class="icon icon-left"></span> 返回
+		</a>
 	</header>
 	<div class="content">
 		<div class="list-block">
@@ -39,7 +43,7 @@
 						</div>
 						<div class="item-inner">
 							<div class="item-input">
-								<input type="password" id="psw" placeholder="密码">
+								<input type="password" id="password" placeholder="密码">
 							</div>
 						</div>
 					</div>
@@ -50,8 +54,7 @@
 							<i class="icon icon-form-email"></i>
 						</div>
 						<div class="item-inner">
-							<input
-								id="j_captcha" name="j_captcha" type="text"
+							<input id="j_captcha" name="j_captcha" type="text"
 								class="form-control in" placeholder="验证码" />
 							<div class="item-input">
 								<img id="captcha_img" alt="点击更换" title="点击更换"
@@ -77,7 +80,9 @@
 		src='//g.alicdn.com/msui/sm/0.6.2/js/sm.min.js' charset='utf-8'></script>
 	<script type='text/javascript'
 		src='//g.alicdn.com/msui/sm/0.6.2/js/sm-extend.min.js' charset='utf-8'></script>
-	<script type='text/javascript' src='../resources/js/shop/ownerlogin.js'
+	<script type='text/javascript'
+		src='../resources/js/common/commonutil.js' charset='utf-8'></script>
+	<script type='text/javascript' src='../resources/js/frontend/login.js'
 		charset='utf-8'></script>
 </body>
 </html>
